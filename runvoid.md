@@ -48,7 +48,7 @@ postinstall 脚本未执行，可能缺少关键初始化步骤。
 4. 如何优化安装流程？
 (1) 完整流程（推荐）
 bash
-# 1. 安装 npm 依赖（必须）
+# 1. 安装 npm 依赖（必须，且需要保证项目是由git clone 获取，否则安装过程会因缺少git信息而导致安装终止）
 npm install
 
 # 2. 构建 React 部分（如果涉及）
@@ -56,9 +56,9 @@ npm run buildreact
 
 # 3. 编译主项目
 npm run compile
-./scripts/code.bat
+
 # 4. 启动开发环境（会自动运行 preLaunch.js）
-npm run electron
+./scripts/code.bat
 (2) 开发时快速重启
 如果只是修改代码（不涉及依赖变更），可以：
 
