@@ -1577,13 +1577,13 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		str: 'Not found' | 'Not unique' | 'Has overlap',
 		blockOrig: string,
 	): string => {
-		const problematicCode = `${tripleTick[0]}\n${JSON.stringify(blockOrig)}\n${tripleTick[1]}`
+		const problematicCode = `${tripleTick[0]}\n${JSON.stringify(blockOrig).slice(0, 20)}\n${tripleTick[1]}`
 
 		// use a switch for better readability / exhaustiveness check
 		let descStr: string
 		switch (str) {
 			case 'Not found':
-				descStr = `The edit was not applied. The text in ORIGINAL must EXACTLY match lines of code in the file, but there was no match for:\n${problematicCode}. Ensure you have the latest version of the file, and ensure the ORIGINAL code matches a code excerpt exactly.`
+				descStr = `The edit was not applied. The text in ORIGINAL must EXACTLY match lines of code in the file, but there was no match for:\n${problematicCode}. Ensure you have the latest version of the file,you may shoudl read_file again, and ensure the ORIGINAL code matches a code excerpt exactly.`
 				break
 			case 'Not unique':
 				descStr = `The edit was not applied. The text in ORIGINAL must be unique in the file being edited, but the following ORIGINAL code appears multiple times in the file:\n${problematicCode}. Ensure you have the latest version of the file, and ensure the ORIGINAL code is unique.`

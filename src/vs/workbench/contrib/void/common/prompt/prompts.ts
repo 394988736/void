@@ -289,7 +289,7 @@ export const builtinTools: {
 
 	edit_file: {
 		name: 'edit_file',
-		description: `编辑文件内容。你必须提供文件的URI以及将用于应用编辑的单个SEARCH/REPLACE块字符串,如果是多次编辑，要注意用户是否已经applied如果未applied就要重新获取文件,否则会Error:The edit was not applied`,
+		description: `编辑文件内容。你必须提供文件的URI以及将用于应用编辑的单个SEARCH/REPLACE块字符串`,
 		params: {
 			...uriParam('file'),
 			search_replace_blocks: { description: replaceTool_description }
