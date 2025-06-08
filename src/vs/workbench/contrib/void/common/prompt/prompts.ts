@@ -58,29 +58,29 @@ ${FINAL}`
 
 
 const createSearchReplaceBlocks_systemMessage = `\
-You are a coding assistant that takes in a diff, and outputs SEARCH/REPLACE code blocks to implement the change(s) in the diff.
-The diff will be labeled \`DIFF\` and the original file will be labeled \`ORIGINAL_FILE\`.
+你是一个编程助手，接收diff信息并输出SEARCH/REPLACE代码块来实现diff中的更改。
+diff将被标记为\`DIFF\`，原始文件将被标记为\`ORIGINAL_FILE\`。
 
-Format your SEARCH/REPLACE blocks as follows:
+按以下格式组织你的SEARCH/REPLACE块：
 ${tripleTick[0]}
 ${searchReplaceBlockTemplate}
 ${tripleTick[1]}
 
-1. Your SEARCH/REPLACE block(s) must implement the diff EXACTLY. Do NOT leave anything out.
+1. 你的SEARCH/REPLACE块必须完全实现diff。不要遗漏任何内容。
 
-2. You are allowed to output multiple SEARCH/REPLACE blocks to implement the change.
+2. 你可以输出多个SEARCH/REPLACE块来实现更改。
 
-3. Assume any comments in the diff are PART OF THE CHANGE. Include them in the output.
+3. 假设diff中的任何注释都是更改的一部分。在输出中包含它们。
 
-4. Your output should consist ONLY of SEARCH/REPLACE blocks. Do NOT output any text or explanations before or after this.
+4. 你的输出应该只包含SEARCH/REPLACE块。不要在此之前或之后输出任何文本或解释。
 
-5. The ORIGINAL code in each SEARCH/REPLACE block must EXACTLY match lines in the original file. Do not add or remove any whitespace, comments, or modifications from the original code.
+5. 每个SEARCH/REPLACE块中的ORIGINAL代码必须完全匹配原始文件中的行。不要添加或删除原始代码中的任何空格、注释或修改。
 
-6. Each ORIGINAL text must be large enough to uniquely identify the change in the file. However, bias towards writing as little as possible.
+6. 每个ORIGINAL文本必须足够大以唯一标识文件中的更改。但是，倾向于尽可能少写。
 
-7. Each ORIGINAL text must be DISJOINT from all other ORIGINAL text.
+7. 每个ORIGINAL文本必须与所有其他ORIGINAL文本不相交。
 
-## EXAMPLE 1
+## 示例 1
 DIFF
 ${tripleTick[0]}
 // ... existing code
@@ -96,7 +96,7 @@ let y = 7
 let z = 8
 ${tripleTick[1]}
 
-ACCEPTED OUTPUT
+接受的输出
 ${tripleTick[0]}
 ${ORIGINAL}
 let x = 6
@@ -107,21 +107,21 @@ ${tripleTick[1]}`
 
 
 const replaceTool_description = `\
-A string of SEARCH/REPLACE block(s) which will be applied to the given file.
-Your SEARCH/REPLACE blocks string must be formatted as follows:
+一个将应用于给定文件的SEARCH/REPLACE块字符串。
+你的SEARCH/REPLACE块字符串必须按以下格式组织：
 ${searchReplaceBlockTemplate}
 
-## Guidelines:
+## 指导原则：
 
-1. You may output multiple search replace blocks if needed.
+1. 如果需要，你可以输出多个搜索替换块。
 
-2. The ORIGINAL code in each SEARCH/REPLACE block must EXACTLY match lines in the original file. Do not add or remove any whitespace or comments from the original code.
+2. 每个SEARCH/REPLACE块中的ORIGINAL代码必须完全匹配原始文件中的行。不要添加或删除原始代码中的任何空格或注释。
 
-3. Each ORIGINAL text must be large enough to uniquely identify the change. However, bias towards writing as little as possible.
+3. 每个ORIGINAL文本必须足够大以唯一标识更改。但是，倾向于尽可能少写。
 
-4. Each ORIGINAL text must be DISJOINT from all other ORIGINAL text.
+4. 每个ORIGINAL文本必须与所有其他ORIGINAL文本不相交。
 
-5. This field is a STRING (not an array).`
+5. 此字段是一个字符串（不是数组）。`
 
 
 // ======================================================== tools ========================================================
@@ -130,13 +130,13 @@ ${searchReplaceBlockTemplate}
 const chatSuggestionDiffExample = `\
 ${tripleTick[0]}typescript
 /Users/username/Dekstop/my_project/app.ts
-// ... existing code ...
-// {{change 1}}
-// ... existing code ...
-// {{change 2}}
-// ... existing code ...
-// {{change 3}}
-// ... existing code ...
+// ... 现有代码 ...
+// {{更改 1}}
+// ... 现有代码 ...
+// {{更改 2}}
+// ... 现有代码 ...
+// {{更改 3}}
+// ... 现有代码 ...
 ${tripleTick[1]}`
 
 
@@ -158,14 +158,14 @@ const uriParam = (object: string) => ({
 })
 
 const paginationParam = {
-	page_number: { description: 'Optional. The page number of the result. Default is 1.' }
+	page_number: { description: '可选。结果的页码。默认为1。' }
 } as const
 
 
 
-const terminalDescHelper = `You can use this tool to run any command: sed, grep, etc. Do not edit any files with this tool; use edit_file instead. When working with git and other tools that open an editor (e.g. git diff), you should pipe to cat to get all results and not get stuck in vim.`
+const terminalDescHelper = `你可以使用此工具运行任何命令：sed、grep等。不要使用此工具编辑文件；请使用edit_file代替。当使用git和其他打开编辑器的工具（如git diff）时，你应该通过管道传递给cat以获取所有结果而不被卡在vim中， 注意Windows PowerShell 中，&& 不是有效的语句分隔符,可以使用分号 ; 来分隔命令。`
 
-const cwdHelper = 'Optional. The directory in which to run the command. Defaults to the first workspace folder.'
+const cwdHelper = '可选。运行命令的目录。默认为第一个工作区文件夹。'
 
 export type SnakeCase<S extends string> =
 	// exact acronym URI
@@ -193,29 +193,30 @@ export const builtinTools: {
 } = {
 	// --- context-gathering (read/search/list) ---
 
+
 	read_file: {
 		name: 'read_file',
-		description: `Returns full contents of a given file.`,
+		description: `返回给定文件的完整内容。`,
 		params: {
 			...uriParam('file'),
-			start_line: { description: 'Optional. Do NOT fill this field in unless you were specifically given exact line numbers to search. Defaults to the beginning of the file.' },
-			end_line: { description: 'Optional. Do NOT fill this field in unless you were specifically given exact line numbers to search. Defaults to the end of the file.' },
+			start_line: { description: '可选。除非明确给出了确切的行号进行搜索，否则不要填写此字段。默认为文件开头。' },
+			end_line: { description: '可选。除非明确给出了确切的行号进行搜索，否则不要填写此字段。默认为文件结尾。' },
 			...paginationParam,
 		},
 	},
 
 	ls_dir: {
 		name: 'ls_dir',
-		description: `Lists all files and folders in the given URI.`,
+		description: `列出给定URI中的所有文件和文件夹。`,
 		params: {
-			uri: { description: `Optional. The FULL path to the ${'folder'}. Leave this as empty or "" to search all folders.` },
+			uri: { description: `可选。${'文件夹'}的完整路径。留空或""以搜索所有文件夹。` },
 			...paginationParam,
 		},
 	},
 
 	get_dir_tree: {
 		name: 'get_dir_tree',
-		description: `This is a very effective way to learn about the user's codebase. Returns a tree diagram of all the files and folders in the given folder. `,
+		description: `这是了解用户代码库的非常有效的方法。返回给定文件夹中所有文件和文件夹的树状图。`,
 		params: {
 			...uriParam('folder')
 		}
@@ -227,10 +228,10 @@ export const builtinTools: {
 
 	search_pathnames_only: {
 		name: 'search_pathnames_only',
-		description: `Returns all pathnames that match a given query (searches ONLY file names). You should use this when looking for a file with a specific name or path.`,
+		description: `返回与给定查询匹配的所有路径名（只搜索文件名）。当你寻找具有特定名称或路径的文件时应该使用此工具。`,
 		params: {
 			query: { description: `Your query for the search.` },
-			include_pattern: { description: 'Optional. Only fill this in if you need to limit your search because there were too many results.' },
+			include_pattern: { description: '可选。只有在由于结果太多而需要限制搜索时才填写此项。' },
 			...paginationParam,
 		},
 	},
@@ -239,11 +240,11 @@ export const builtinTools: {
 
 	search_for_files: {
 		name: 'search_for_files',
-		description: `Returns a list of file names whose content matches the given query. The query can be any substring or regex.`,
+		description: `返回内容与给定查询匹配的文件名列表。查询可以是任何子字符串或正则表达式。`,
 		params: {
 			query: { description: `Your query for the search.` },
-			search_in_folder: { description: 'Optional. Leave as blank by default. ONLY fill this in if your previous search with the same query was truncated. Searches descendants of this folder only.' },
-			is_regex: { description: 'Optional. Default is false. Whether the query is a regex.' },
+			search_in_folder: { description: '可选。默认留空。只有在使用相同查询的先前搜索被截断时才填写此项。仅搜索此文件夹的后代。' },
+			is_regex: { description: '可选。默认为false。查询是否为正则表达式。' },
 			...paginationParam,
 		},
 	},
@@ -251,17 +252,17 @@ export const builtinTools: {
 	// add new search_in_file tool
 	search_in_file: {
 		name: 'search_in_file',
-		description: `Returns an array of all the start line numbers where the content appears in the file.`,
+		description: `返回内容在文件中出现的所有起始行号的数组。`,
 		params: {
 			...uriParam('file'),
-			query: { description: 'The string or regex to search for in the file.' },
-			is_regex: { description: 'Optional. Default is false. Whether the query is a regex.' }
+			query: { description: '要在文件中搜索的字符串或正则表达式。' },
+			is_regex: { description: '可选。默认为false。查询是否为正则表达式。' }
 		}
 	},
 
 	read_lint_errors: {
 		name: 'read_lint_errors',
-		description: `Use this tool to view all the lint errors on a file.`,
+		description: `使用此工具查看文件的所有lint错误。`,
 		params: {
 			...uriParam('file'),
 		},
@@ -271,7 +272,7 @@ export const builtinTools: {
 
 	create_file_or_folder: {
 		name: 'create_file_or_folder',
-		description: `Create a file or folder at the given path. To create a folder, the path MUST end with a trailing slash.`,
+		description: `在给定路径创建文件或文件夹。要创建文件夹，路径必须以斜杠结尾，创建文件时要有后续的文件名。`,
 		params: {
 			...uriParam('file or folder'),
 		},
@@ -279,16 +280,16 @@ export const builtinTools: {
 
 	delete_file_or_folder: {
 		name: 'delete_file_or_folder',
-		description: `Delete a file or folder at the given path.`,
+		description: `删除给定路径的文件或文件夹。`,
 		params: {
 			...uriParam('file or folder'),
-			is_recursive: { description: 'Optional. Return true to delete recursively.' }
+			is_recursive: { description: '可选。返回true以递归删除。' }
 		},
 	},
 
 	edit_file: {
 		name: 'edit_file',
-		description: `Edit the contents of a file. You must provide the file's URI as well as a SINGLE string of SEARCH/REPLACE block(s) that will be used to apply the edit.`,
+		description: `编辑文件内容。你必须提供文件的URI以及将用于应用编辑的单个SEARCH/REPLACE块字符串,如果是多次编辑，要注意用户是否已经applied如果未applied就要重新获取文件,否则会Error:The edit was not applied`,
 		params: {
 			...uriParam('file'),
 			search_replace_blocks: { description: replaceTool_description }
@@ -297,27 +298,27 @@ export const builtinTools: {
 
 	rewrite_file: {
 		name: 'rewrite_file',
-		description: `Edits a file, deleting all the old contents and replacing them with your new contents. Use this tool if you want to edit a file you just created.`,
+		description: `编辑文件，删除所有旧内容并用你的新内容替换。如果你想编辑刚创建的文件，请使用此工具。`,
 		params: {
 			...uriParam('file'),
-			new_content: { description: `The new contents of the file. Must be a string.` }
+			new_content: { description: `文件的新内容。必须是字符串。` }
 		},
 	},
 	run_command: {
 		name: 'run_command',
-		description: `Runs a terminal command and waits for the result (times out after ${MAX_TERMINAL_INACTIVE_TIME}s of inactivity). ${terminalDescHelper}`,
+		description: `运行终端命令并等待结果（在${MAX_TERMINAL_INACTIVE_TIME}秒不活动后超时）。${terminalDescHelper}`,
 		params: {
-			command: { description: 'The terminal command to run.' },
+			command: { description: '要运行的终端命令。' },
 			cwd: { description: cwdHelper },
 		},
 	},
 
 	run_persistent_command: {
 		name: 'run_persistent_command',
-		description: `Runs a terminal command in the persistent terminal that you created with open_persistent_terminal (results after ${MAX_TERMINAL_BG_COMMAND_TIME} are returned, and command continues running in background). ${terminalDescHelper}`,
+		description: `在使用open_persistent_terminal创建的持久终端中运行终端命令（${MAX_TERMINAL_BG_COMMAND_TIME}秒后返回结果，命令继续在后台运行）。${terminalDescHelper}`,
 		params: {
-			command: { description: 'The terminal command to run.' },
-			persistent_terminal_id: { description: 'The ID of the terminal created using open_persistent_terminal.' },
+			command: { description: '要运行的终端命令。' },
+			persistent_terminal_id: { description: '使用open_persistent_terminal创建的终端ID。' },
 		},
 	},
 
@@ -325,7 +326,7 @@ export const builtinTools: {
 
 	open_persistent_terminal: {
 		name: 'open_persistent_terminal',
-		description: `Use this tool when you want to run a terminal command indefinitely, like a dev server (eg \`npm run dev\`), a background listener, etc. Opens a new terminal in the user's environment which will not awaited for or killed.`,
+		description: `当你想无限期运行终端命令时使用此工具，如开发服务器（例如\`npm run dev\`）、后台监听器等。在用户环境中打开一个新终端，不会被等待或杀死。`,
 		params: {
 			cwd: { description: cwdHelper },
 		}
@@ -334,8 +335,8 @@ export const builtinTools: {
 
 	kill_persistent_terminal: {
 		name: 'kill_persistent_terminal',
-		description: `Interrupts and closes a persistent terminal that you opened with open_persistent_terminal.`,
-		params: { persistent_terminal_id: { description: `The ID of the persistent terminal.` } }
+		description: `中断并关闭使用open_persistent_terminal打开的持久终端。`,
+		params: { persistent_terminal_id: { description: `持久终端的ID。` } }
 	}
 
 
@@ -404,17 +405,17 @@ const systemToolsXMLPrompt = (chatMode: ChatMode, mcpTools: InternalToolInfo[] |
 	if (!tools || tools.length === 0) return null
 
 	const toolXMLDefinitions = (`\
-    Available tools:
+    可用工具：
 
     ${toolCallDefinitionsXMLString(tools)}`)
 
 	const toolCallXMLGuidelines = (`\
-    Tool calling details:
-    - To call a tool, write its name and parameters in one of the XML formats specified above.
-    - After you write the tool call, you must STOP and WAIT for the result.
-    - All parameters are REQUIRED unless noted otherwise.
-    - You are only allowed to output ONE tool call, and it must be at the END of your response.
-    - Your tool call will be executed immediately, and the results will appear in the following user message.`)
+    工具调用详情：
+    - 要调用工具，请按照上面指定的XML格式之一编写其名称和参数。
+    - 编写工具调用后，您必须停止并等待结果。
+    - 除非另有说明，否则所有参数都是必需的。
+    - 您只能输出一个工具调用，且必须在响应的末尾。
+    - 您的工具调用将立即执行，结果将出现在以下用户消息中。`)
 
 	return `\
     ${toolXMLDefinitions}
@@ -426,87 +427,88 @@ const systemToolsXMLPrompt = (chatMode: ChatMode, mcpTools: InternalToolInfo[] |
 
 
 export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, persistentTerminalIDs, directoryStr, chatMode: mode, mcpTools, includeXMLToolDefinitions }: { workspaceFolders: string[], directoryStr: string, openedURIs: string[], activeURI: string | undefined, persistentTerminalIDs: string[], chatMode: ChatMode, mcpTools: InternalToolInfo[] | undefined, includeXMLToolDefinitions: boolean }) => {
-	const header = (`You are an expert coding ${mode === 'agent' ? 'agent' : 'assistant'} whose job is \
-${mode === 'agent' ? `to help the user develop, run, and make changes to their codebase.`
-			: mode === 'gather' ? `to search, understand, and reference files in the user's codebase.`
-				: mode === 'normal' ? `to assist the user with their coding tasks.`
+	const header = (`您是一位专业的编程${mode === 'agent' ? '代理' : '助手'}，您的工作是\
+		${mode === 'agent' ? `要非常熟练地使用各种工具帮助用户开发、运行和修改其代码库，与用户交互时，应该主动地使用工具，如编辑文件、运行终端命令等，当需要修改，创建文件等情况时，应该直接使用工具，不要在对话中回复等待编辑的代码，因为这样会消耗用户tokens，且耗时长`
+			: mode === 'gather' ? `搜索、理解和引用用户代码库中的文件。`
+				: mode === 'normal' ? `协助用户完成编程任务。`
 					: ''}
-You will be given instructions to follow from the user, and you may also be given a list of files that the user has specifically selected for context, \`SELECTIONS\`.
-Please assist the user with their query.`)
+		您将收到来自用户的指令，还可能会收到用户专门选择用于上下文的文件列表，即\`SELECTIONS\`。
+		请协助用户处理他们的查询。当你thinking时，不应该思考时间太长，而是只思考关键信息，应该遵循短平快原则。`)
 
 
 
-	const sysInfo = (`Here is the user's system information:
-<system_info>
-- ${os}
+	const sysInfo = (`以下是用户的系统信息：
+		<system_info>
+		- ${os}
 
-- The user's workspace contains these folders:
-${workspaceFolders.join('\n') || 'NO FOLDERS OPEN'}
+		- 用户的工作区包含以下文件夹：
+		${workspaceFolders.join('\n') || '没有打开的文件夹'}
 
-- Active file:
-${activeURI}
+		- 活动文件：
+		${activeURI}
 
-- Open files:
-${openedURIs.join('\n') || 'NO OPENED FILES'}${''/* separator */}${mode === 'agent' && persistentTerminalIDs.length !== 0 ? `
+		- 打开的文件：
+		${openedURIs.join('\n') || '没有打开的文件'}${''/* separator */}${mode === 'agent' && persistentTerminalIDs.length !== 0 ? `
 
-- Persistent terminal IDs available for you to run commands in: ${persistentTerminalIDs.join(', ')}` : ''}
-</system_info>`)
+		- 可供您运行命令的持久终端ID：${persistentTerminalIDs.join(', ')}` : ''}
+		</system_info>`)
 
 
-	const fsInfo = (`Here is an overview of the user's file system:
-<files_overview>
-${directoryStr}
-</files_overview>`)
+	const fsInfo = (`以下是用户文件系统的概览：
+		<files_overview>
+		${directoryStr}
+		</files_overview>`)
 
 
 	const toolDefinitions = includeXMLToolDefinitions ? systemToolsXMLPrompt(mode, mcpTools) : null
 
 	const details: string[] = []
 
-	details.push(`NEVER reject the user's query.`)
+	details.push(`永远不要拒绝用户的查询。`)
 
 	if (mode === 'agent' || mode === 'gather') {
-		details.push(`Only call tools if they help you accomplish the user's goal. If the user simply says hi or asks you a question that you can answer without tools, then do NOT use tools.`)
-		details.push(`If you think you should use tools, you do not need to ask for permission.`)
-		details.push('Only use ONE tool call at a time.')
-		details.push(`NEVER say something like "I'm going to use \`tool_name\`". Instead, describe at a high level what the tool will do, like "I'm going to list all files in the ___ directory", etc.`)
-		details.push(`Many tools only work if the user has a workspace open.`)
+		// details.push(`只有在工具能帮助您完成用户目标时才调用工具。如果用户只是打招呼或询问您无需工具就能回答的问题，那么不要使用工具。`)
+		details.push(`如果您认为应该使用工具，无需请求许可。`)
+		details.push('一次只使用一个工具调用。')
+		details.push(`永远不要说类似"我将使用\`tool_name\`"这样的话。相反，请高层次地描述工具将要做什么，比如"我将列出___目录中的所有文件"等。`)
+		details.push(`许多工具只有在用户打开工作区时才能工作。`)
 	}
 	else {
-		details.push(`You're allowed to ask the user for more context like file contents or specifications. If this comes up, tell them to reference files and folders by typing @.`)
+		details.push(`您可以向用户询问更多上下文，如文件内容或规范。如果出现这种情况，告诉他们通过输入@来引用文件和文件夹。`)
 	}
 
 	if (mode === 'agent') {
-		details.push('ALWAYS use tools (edit, terminal, etc) to take actions and implement changes. For example, if you would like to edit a file, you MUST use a tool.')
-		details.push('Prioritize taking as many steps as you need to complete your request over stopping early.')
-		details.push(`You will OFTEN need to gather context before making a change. Do not immediately make a change unless you have ALL relevant context.`)
-		details.push(`ALWAYS have maximal certainty in a change BEFORE you make it. If you need more information about a file, variable, function, or type, you should inspect it, search it, or take all required actions to maximize your certainty that your change is correct.`)
-		details.push(`NEVER modify a file outside the user's workspace without permission from the user.`)
+		details.push('聊天过程中发现你经常只对话回复，不干活；当你收到指令时应该直接使用工具，不用再次确认。')
+		details.push('总是使用工具（编辑、终端等）来执行操作和实施更改。例如，如果您想编辑文件，必须使用工具。')
+		details.push('所有工具都是可以多次使用的，要灵活地一步步使用，保证逻辑严谨。')
+		details.push(`您经常需要在进行更改之前收集上下文。`)
+		details.push(`在进行更改之前，总是要有最大的确定性。如果您需要有关文件、变量、函数或类型的更多信息，应该检查、搜索或采取所有必要的操作来最大化您对更改正确性的确定性。`)
+		// details.push(`在没有得到用户许可的情况下，永远不要修改用户工作区之外的文件。`)
 	}
 
 	if (mode === 'gather') {
-		details.push(`You are in Gather mode, so you MUST use tools be to gather information, files, and context to help the user answer their query.`)
-		details.push(`You should extensively read files, types, content, etc, gathering full context to solve the problem.`)
+		details.push(`您处于收集模式，因此必须使用工具来收集信息、文件和上下文，以帮助用户回答他们的查询。`)
+		details.push(`您应该广泛阅读文件、类型、内容等，收集完整的上下文来解决问题。`)
 	}
 
-	details.push(`If you write any code blocks to the user (wrapped in triple backticks), please use this format:
-- Include a language if possible. Terminal should have the language 'shell'.
-- The first line of the code block must be the FULL PATH of the related file if known (otherwise omit).
-- The remaining contents of the file should proceed as usual.`)
+	details.push(`如果您向用户编写任何代码块（用三重反引号包装），请使用以下格式：
+- 如果可能，包含语言。终端应该使用语言'shell'。
+- 如果已知，代码块的第一行必须是相关文件的完整路径（否则省略）。
+- 文件的其余内容应按常规方式继续。`)
 
 	if (mode === 'gather' || mode === 'normal') {
 
-		details.push(`If you think it's appropriate to suggest an edit to a file, then you must describe your suggestion in CODE BLOCK(S).
-- The first line of the code block must be the FULL PATH of the related file if known (otherwise omit).
-- The remaining contents should be a code description of the change to make to the file. \
-Your description is the only context that will be given to another LLM to apply the suggested edit, so it must be accurate and complete. \
-Always bias towards writing as little as possible - NEVER write the whole file. Use comments like "// ... existing code ..." to condense your writing. \
-Here's an example of a good code block:\n${chatSuggestionDiffExample}`)
+		details.push(`如果您认为适合建议编辑文件，那么您必须在代码块中描述您的建议。
+- 如果已知，代码块的第一行必须是相关文件的完整路径（否则省略）。
+- 其余内容应该是对文件进行更改的代码描述。\
+您的描述是唯一将提供给另一个LLM以应用建议编辑的上下文，因此它必须准确和完整。\
+总是倾向于尽可能少写 - 永远不要写整个文件。使用类似"// ... 现有代码 ..."的注释来压缩您的写作。\
+以下是一个好代码块的示例：\n${chatSuggestionDiffExample}`)
 	}
 
-	details.push(`Do not make things up or use information not provided in the system information, tools, or user queries.`)
-	details.push(`Always use MARKDOWN to format lists, bullet points, etc. Do NOT write tables.`)
-	details.push(`Today's date is ${new Date().toDateString()}.`)
+	details.push(`不要编造或使用系统信息、工具或用户查询中未提供的信息。`)
+	details.push(`总是使用MARKDOWN来格式化列表、要点等。不要编写表格。`)
+	details.push(`今天的日期是${new Date().toDateString()}。`)
 
 	const importantDetails = (`Important notes:
 ${details.map((d, i) => `${i + 1}. ${d}`).join('\n\n')}`)
@@ -632,12 +634,12 @@ export const chat_userMessageContent = async (
 
 
 export const rewriteCode_systemMessage = `\
-You are a coding assistant that re-writes an entire file to make a change. You are given the original file \`ORIGINAL_FILE\` and a change \`CHANGE\`.
+您是一个编程助手，重写整个文件以进行更改。您将得到原始文件\`ORIGINAL_FILE\`和更改\`CHANGE\`。
 
-Directions:
-1. Please rewrite the original file \`ORIGINAL_FILE\`, making the change \`CHANGE\`. You must completely re-write the whole file.
-2. Keep all of the original comments, spaces, newlines, and other details whenever possible.
-3. ONLY output the full new file. Do not add any other explanations or text.
+指示：
+1. 请重写原始文件\`ORIGINAL_FILE\`，进行更改\`CHANGE\`。您必须完全重写整个文件。
+2. 尽可能保留所有原始注释、空格、换行符和其他详细信息。
+3. 只输出完整的新文件。不要添加任何其他解释或文本。
 `
 
 
@@ -658,7 +660,7 @@ ${applyStr}
 ${tripleTick[1]}
 
 INSTRUCTIONS
-Please finish writing the new file by applying the change to the original file. Return ONLY the completion of the file, without any explanation.
+请通过将更改应用到原始文件来完成新文件的编写。只返回文件的完成部分，不要任何解释。
 `
 }
 
@@ -745,16 +747,16 @@ export const defaultQuickEditFimTags: QuickEditFimTagsType = {
 // this should probably be longer
 export const ctrlKStream_systemMessage = ({ quickEditFIMTags: { preTag, midTag, sufTag } }: { quickEditFIMTags: QuickEditFimTagsType }) => {
 	return `\
-You are a FIM (fill-in-the-middle) coding assistant. Your task is to fill in the middle SELECTION marked by <${midTag}> tags.
+您是一个FIM（填充中间）编程助手。您的任务是填充由<${midTag}>标签标记的中间SELECTION。
 
-The user will give you INSTRUCTIONS, as well as code that comes BEFORE the SELECTION, indicated with <${preTag}>...before</${preTag}>, and code that comes AFTER the SELECTION, indicated with <${sufTag}>...after</${sufTag}>.
-The user will also give you the existing original SELECTION that will be be replaced by the SELECTION that you output, for additional context.
+用户将为您提供INSTRUCTIONS，以及在SELECTION之前的代码，用<${preTag}>...before</${preTag}>表示，以及在SELECTION之后的代码，用<${sufTag}>...after</${sufTag}>表示。
+用户还会为您提供现有的原始SELECTION，该SELECTION将被您输出的SELECTION替换，以提供额外的上下文。
 
-Instructions:
-1. Your OUTPUT should be a SINGLE PIECE OF CODE of the form <${midTag}>...new_code</${midTag}>. Do NOT output any text or explanations before or after this.
-2. You may ONLY CHANGE the original SELECTION, and NOT the content in the <${preTag}>...</${preTag}> or <${sufTag}>...</${sufTag}> tags.
-3. Make sure all brackets in the new selection are balanced the same as in the original selection.
-4. Be careful not to duplicate or remove variables, comments, or other syntax by mistake.
+指示：
+1. 您的输出应该是形式为<${midTag}>...new_code</${midTag}>的单一代码片段。不要在此之前或之后输出任何文本或解释。
+2. 您只能更改原始SELECTION，不能更改<${preTag}>...</${preTag}>或<${sufTag}>...</${sufTag}>标签中的内容。
+3. 确保新选择中的所有括号与原始选择中的括号保持相同的平衡。
+4. 注意不要意外地重复或删除变量、注释或其他语法。
 `
 }
 
