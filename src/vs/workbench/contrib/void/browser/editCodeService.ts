@@ -1577,7 +1577,7 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		str: 'Not found' | 'Not unique' | 'Has overlap',
 		blockOrig: string,
 	): string => {
-		const problematicCode = `${tripleTick[0]}\n${JSON.stringify(blockOrig).slice(0, 20)}\n${tripleTick[1]}`
+		const problematicCode = `${tripleTick[0]}\n${JSON.stringify(blockOrig)}\n${tripleTick[1]}`
 
 		// use a switch for better readability / exhaustiveness check
 		let descStr: string

@@ -163,7 +163,7 @@ const paginationParam = {
 
 
 
-const terminalDescHelper = `你可以使用此工具运行任何命令：sed、grep等。不要使用此工具编辑文件；请使用edit_file代替。当使用git和其他打开编辑器的工具（如git diff）时，你应该通过管道传递给cat以获取所有结果而不被卡在vim中， 注意Windows PowerShell 中，&& 不是有效的语句分隔符,可以使用分号 ; 来分隔命令。`
+const terminalDescHelper = `你可以使用此工具运行任何命令：sed、grep等。不要使用此工具编辑文件；请使用edit_file代替。当使用git和其他打开编辑器的工具（如git diff）时，你应该通过管道传递给cat以获取所有结果而不被卡在vim中， 注意Windows中，&& 不是有效的语句分隔符,可以使用分号 ; 来分隔命令。比如在windows中这是错的：$ cd d:\demo\llm-agent-service && npx ts-node src/index.ts;这是对的:$ cd d:\demo\llm-agent-service; npx ts-node src/index.ts`
 
 const cwdHelper = '可选。运行命令的目录。默认为第一个工作区文件夹。'
 
@@ -298,7 +298,7 @@ export const builtinTools: {
 
 	rewrite_file: {
 		name: 'rewrite_file',
-		description: `编辑文件，删除所有旧内容并用你的新内容替换。如果你想编辑刚创建的文件，请使用此工具。`,
+		description: `编辑文件，删除所有旧内容并用你的新内容替换。如果你想编辑刚创建的文件，请使用此工具。创建完之后不需要重复回复用户创建的文件内容。`,
 		params: {
 			...uriParam('file'),
 			new_content: { description: `文件的新内容。必须是字符串。` }
@@ -428,12 +428,15 @@ const systemToolsXMLPrompt = (chatMode: ChatMode, mcpTools: InternalToolInfo[] |
 
 export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, persistentTerminalIDs, directoryStr, chatMode: mode, mcpTools, includeXMLToolDefinitions }: { workspaceFolders: string[], directoryStr: string, openedURIs: string[], activeURI: string | undefined, persistentTerminalIDs: string[], chatMode: ChatMode, mcpTools: InternalToolInfo[] | undefined, includeXMLToolDefinitions: boolean }) => {
 	const header = (`您是一位专业的编程${mode === 'agent' ? '代理' : '助手'}，您的工作是\
-		${mode === 'agent' ? `要非常熟练地使用各种工具帮助用户开发、运行和修改其代码库，与用户交互时，应该主动地使用工具，如编辑文件、运行终端命令等，当需要修改，创建文件等情况时，应该直接使用工具，不要在对话中回复等待编辑的代码，因为这样会消耗用户tokens，且耗时长`
+		${mode === 'agent' ? `要非常熟练地使用各种工具帮助用户开发、运行和修改其代码库，与用户交互时，应该主动地使用工具，如编辑文件、运行终端命令等，当需要修改，创建文件等情况时，应该直接使用工具，而不是口头创建，不要在对话中回复等待编辑的代码，因为这样会消耗用户tokens，且耗时长；
+			如果不明确，应当检查文件目录结构或者阅读文件内容
+			如果是
+			`
 			: mode === 'gather' ? `搜索、理解和引用用户代码库中的文件。`
 				: mode === 'normal' ? `协助用户完成编程任务。`
 					: ''}
 		您将收到来自用户的指令，还可能会收到用户专门选择用于上下文的文件列表，即\`SELECTIONS\`。
-		请协助用户处理他们的查询。当你thinking时，不应该思考时间太长，而是只思考关键信息，应该遵循短平快原则。`)
+		请协助用户处理他们的查询。`)
 
 
 

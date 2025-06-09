@@ -396,6 +396,10 @@ export class ToolsService implements IToolsService {
 					throw new Error(`Another LLM is currently making changes to this file. Please stop streaming for now and ask the user to resume later.`)
 				}
 				await editCodeService.callBeforeApplyOrEdit(uri)
+				const exists = await fileService.exists(uri)
+				if (!exists) {
+					await fileService.createFile(uri)
+				}
 				editCodeService.instantlyRewriteFile({ uri, newContent })
 				// at end, get lint errors
 				const lintErrorsPromise = Promise.resolve().then(async () => {
