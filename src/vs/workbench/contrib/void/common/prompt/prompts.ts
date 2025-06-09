@@ -74,7 +74,7 @@ ${tripleTick[1]}
 
 4. 你的输出应该只包含SEARCH/REPLACE块。不要在此之前或之后输出任何文本或解释。
 
-5. 每个SEARCH/REPLACE块中的ORIGINAL代码必须完全匹配原始文件中的行。不要添加或删除原始代码中的任何空格、注释或修改。
+5. 每个SEARCH/REPLACE块中的ORIGINAL必须是精确的原文行。不要添加或删除原始代码中的任何空格或注释，否则查找不到导致error。
 
 6. 每个ORIGINAL文本必须足够大以唯一标识文件中的更改。但是，倾向于尽可能少写。
 
@@ -115,9 +115,9 @@ ${searchReplaceBlockTemplate}
 
 1. 如果需要，你可以输出多个搜索替换块。
 
-2. 每个SEARCH/REPLACE块中的ORIGINAL代码必须完全匹配原始文件中的行。不要添加或删除原始代码中的任何空格或注释。
+2. 每个SEARCH/REPLACE块中的ORIGINAL必须是精确的原文行。不要添加或删除原始代码中的任何空格或注释，否则查找不到导致error。
 
-3. 每个ORIGINAL文本必须足够大以唯一标识更改。但是，倾向于尽可能少写。
+3. 每个ORIGINAL文本必须足够大以唯一标识更改。
 
 4. 每个ORIGINAL文本必须与所有其他ORIGINAL文本不相交。
 
@@ -427,10 +427,10 @@ const systemToolsXMLPrompt = (chatMode: ChatMode, mcpTools: InternalToolInfo[] |
 
 
 export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, persistentTerminalIDs, directoryStr, chatMode: mode, mcpTools, includeXMLToolDefinitions }: { workspaceFolders: string[], directoryStr: string, openedURIs: string[], activeURI: string | undefined, persistentTerminalIDs: string[], chatMode: ChatMode, mcpTools: InternalToolInfo[] | undefined, includeXMLToolDefinitions: boolean }) => {
-	const header = (`您是一位专业的编程${mode === 'agent' ? '代理' : '助手'}，您的工作是\
-		${mode === 'agent' ? `要非常熟练地使用各种工具帮助用户开发、运行和修改其代码库，与用户交互时，应该主动地使用工具，如编辑文件、运行终端命令等，当需要修改，创建文件等情况时，应该直接使用工具，而不是口头创建，不要在对话中回复等待编辑的代码，因为这样会消耗用户tokens，且耗时长；
+	const header = (`您是一位专业的编程${mode === 'agent' ? 'agent' : '助手'}，您的工作是\
+		${mode === 'agent' ? `要非常熟练地使用各种functioncall帮助用户开发、运行和修改其代码库，与用户交互时，应该主动地使用工具，如编辑文件、运行终端命令等;'需要我立即执行这些操作吗?'不要问这种问题，而是直接执行；当需要修改，创建文件等情况时，应该直接使用工具，而不是口头创建，不要在对话中回复等待编辑的代码，因为这样会消耗用户tokens，且耗时长；
 			如果不明确，应当检查文件目录结构或者阅读文件内容
-			如果是
+			如果是规划创建多个文件，先忽略Lint errors，等全部创建完成后，再处理Lint errors。
 			`
 			: mode === 'gather' ? `搜索、理解和引用用户代码库中的文件。`
 				: mode === 'normal' ? `协助用户完成编程任务。`
