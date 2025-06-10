@@ -92,8 +92,6 @@ ORIGINAL_FILE
 ${tripleTick[0]}
 let w = 5
 let x = 6
-let y = 7
-let z = 8
 ${tripleTick[1]}
 
 接受的输出
@@ -114,14 +112,9 @@ ${searchReplaceBlockTemplate}
 ## 指导原则：
 
 1. 如果需要，你可以输出多个搜索替换块。
-
-2. 每个SEARCH/REPLACE块中的ORIGINAL必须是精确的原文行。不要添加或删除原始代码中的任何空格或注释，否则查找不到导致error。
-
-3. 每个ORIGINAL文本必须足够大以唯一标识更改。
-
-4. 每个ORIGINAL文本必须与所有其他ORIGINAL文本不相交。
-
-5. 此字段是一个字符串（不是数组）。`
+2. 每个SEARCH/REPLACE块中的ORIGINAL必须是精确的原文行。不要添加或删除原始代码中的任何空格或注释，否则查找不到导致error!!!
+3.二次修改时应该要先重新read_file，再进行修改，否则可能会出现查找不到的问题。
+`
 
 
 // ======================================================== tools ========================================================
@@ -289,7 +282,7 @@ export const builtinTools: {
 
 	edit_file: {
 		name: 'edit_file',
-		description: `编辑文件内容。你必须提供文件的URI以及将用于应用编辑的单个SEARCH/REPLACE块字符串`,
+		description: `编辑文件内容。你必须提供文件的URI以及将用于应用编辑的单个SEARCH/REPLACE块字符串,一定要注意params要求的格式，极大概率会出现error。`,
 		params: {
 			...uriParam('file'),
 			search_replace_blocks: { description: replaceTool_description }
@@ -428,7 +421,7 @@ const systemToolsXMLPrompt = (chatMode: ChatMode, mcpTools: InternalToolInfo[] |
 
 export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, persistentTerminalIDs, directoryStr, chatMode: mode, mcpTools, includeXMLToolDefinitions }: { workspaceFolders: string[], directoryStr: string, openedURIs: string[], activeURI: string | undefined, persistentTerminalIDs: string[], chatMode: ChatMode, mcpTools: InternalToolInfo[] | undefined, includeXMLToolDefinitions: boolean }) => {
 	const header = (`您是一位专业的编程${mode === 'agent' ? 'agent' : '助手'}，您的工作是\
-		${mode === 'agent' ? `要非常熟练地使用各种functioncall帮助用户开发、运行和修改其代码库，与用户交互时，应该主动地使用工具，如编辑文件、运行终端命令等;'需要我立即执行这些操作吗?'不要问这种问题，而是直接执行；当需要修改，创建文件等情况时，应该直接使用工具，而不是口头创建，不要在对话中回复等待编辑的代码，因为这样会消耗用户tokens，且耗时长；
+		${mode === 'agent' ? `要非常熟练地使用各种functioncall帮助用户开发、运行和修改其代码库，如编辑文件、运行终端命令等，使用工具时要做到举一反三，不能用户叫一下你才动一下，使用一个工具之后还要认真考虑是否还要有关联的问题要处理;'需要我立即执行这些操作吗?'不要问这种问题，而是直接执行；当需要修改，创建文件等情况时，应该直接使用工具，而不是口头创建，不要在对话中回复等待编辑的代码，因为这样会消耗用户tokens，且耗时长；
 			如果不明确，应当检查文件目录结构或者阅读文件内容
 			如果是规划创建多个文件，先忽略Lint errors，等全部创建完成后，再处理Lint errors。
 			`
@@ -486,7 +479,7 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 		details.push('所有工具都是可以多次使用的，要灵活地一步步使用，保证逻辑严谨。')
 		details.push(`您经常需要在进行更改之前收集上下文。`)
 		details.push(`在进行更改之前，总是要有最大的确定性。如果您需要有关文件、变量、函数或类型的更多信息，应该检查、搜索或采取所有必要的操作来最大化您对更改正确性的确定性。`)
-		// details.push(`在没有得到用户许可的情况下，永远不要修改用户工作区之外的文件。`)
+		details.push(`当用户没有特别指定时说'这个文件'默认指的是当前active file`)
 	}
 
 	if (mode === 'gather') {
