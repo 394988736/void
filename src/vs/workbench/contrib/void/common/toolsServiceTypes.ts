@@ -23,7 +23,7 @@ export const approvalTypeOfBuiltinToolName: Partial<{ [T in BuiltinToolName]?: '
 	'delete_file_or_folder': 'edits',
 	'rewrite_file': 'edits',
 	'edit_file': 'edits',
-	'edit_file_by_lines': 'edits',
+	'replace_file_blocks': 'edits',
 	'run_command': 'terminal',
 	'run_persistent_command': 'terminal',
 	'open_persistent_terminal': 'terminal',
@@ -56,7 +56,7 @@ export type BuiltinToolCallParams = {
 	'edit_file': { uri: URI, searchReplaceBlocks: string },
 	// Add the new line-based edit parameters
 	// 支持多处基于行号的编辑
-	'edit_file_by_lines': {
+	'replace_file_blocks': {
 		uri: URI;
 		original_line_count: number;
 		edits: EditByLinesItem[];
@@ -83,7 +83,7 @@ export type BuiltinToolResultType = {
 	'rewrite_file': Promise<{ lintErrors: LintErrorItem[] | null }>,
 	'edit_file': Promise<{ lintErrors: LintErrorItem[] | null }>,
 	// Add the new line-based edit tool
-	'edit_file_by_lines': Promise<{ lintErrors: LintErrorItem[] | null }>,
+	'replace_file_blocks': Promise<{ lintErrors: LintErrorItem[] | null }>,
 	'create_file_or_folder': {},
 	'delete_file_or_folder': {},
 	// ---

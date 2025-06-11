@@ -162,7 +162,7 @@ const paginationParam = {
 
 
 
-const terminalDescHelper = `你可以使用此工具运行任何命令：sed、grep等。不要使用此工具编辑文件；请使用edit_file_by_lines代替。当使用git和其他打开编辑器的工具（如git diff）时，你应该通过管道传递给cat以获取所有结果而不被卡在vim中， 注意Windows中，&& 不是有效的语句分隔符,可以使用分号 ; 来分隔命令。比如在windows中这是错的：$ cd d:\demo\llm-agent-service && npx ts-node src/index.ts;这是对的:$ cd d:\demo\llm-agent-service; npx ts-node src/index.ts`
+const terminalDescHelper = `你可以使用此工具运行任何命令：sed、grep等。不要使用此工具编辑文件；请使用replace_file_blocks代替。当使用git和其他打开编辑器的工具（如git diff）时，你应该通过管道传递给cat以获取所有结果而不被卡在vim中， 注意Windows中，&& 不是有效的语句分隔符,可以使用分号 ; 来分隔命令。比如在windows中这是错的：$ cd d:\demo\llm-agent-service && npx ts-node src/index.ts;这是对的:$ cd d:\demo\llm-agent-service; npx ts-node src/index.ts`
 
 const cwdHelper = '可选。运行命令的目录。默认为第一个工作区文件夹。'
 
@@ -294,9 +294,10 @@ export const builtinTools: {
 			search_replace_blocks: { description: replaceTool_description }
 		},
 	},
-	edit_file_by_lines: {
-		name: 'edit_file_by_lines',
-		description: `通过行号范围编辑文件内容。(注意：行号是从1开始的，不是从0开始的)支持：
+	replace_file_blocks: {
+		name: 'replace_file_blocks',
+		description: `通过行号范围编辑文件内容。(注意：行号是从1开始的，不是从0开始的,原空格也要被保留，否则diff不一致)
+		支持：
 		- 单次/多次编辑：提供 edits 数组，包含多个编辑块
 		必须提供：
 		- 文件URI
@@ -397,8 +398,8 @@ const toolCallDefinitionsXMLString = (tools: InternalToolInfo[]): string => {
 	return tools
 		.filter(t => t.name !== 'edit_file')
 		.map((t, i) => {
-			// 特殊处理 edit_file_by_lines
-			if (t.name === 'edit_file_by_lines') {
+			// 特殊处理 replace_file_blocks
+			if (t.name === 'replace_file_blocks') {
 				const formatted = formatEditFileByLinesTool(t);
 				return `\
 ${i + 1}. ${t.name}
@@ -422,7 +423,7 @@ Format:
 		.join('\n\n');
 };
 /**
- * 为 edit_file_by_lines 工具生成专属的 XML 格式描述
+ * 为 replace_file_blocks 工具生成专属的 XML 格式描述
  */
 function formatEditFileByLinesTool(tool: InternalToolInfo): string {
 	const { name, params } = tool;
@@ -452,10 +453,10 @@ ${paramsXml}
 </${name}>`;
 }
 /*
-edit_file_by_lines
+replace_file_blocks
 Description: 通过行号范围编辑文件内容，支持多处修改
 Format:
-<edit_file_by_lines>
+<replace_file_blocks>
   <uri>要编辑的文件 URI</uri>
   <edits>
 	<!-- 每个 item 表示一处编辑操作 -->
@@ -465,7 +466,7 @@ Format:
 	  <newContent>要插入的新内容（完全替换指定范围）</newContent>
 	</item>
   </edits>
-</edit_file_by_lines>
+</replace_file_blocks>
 
 */
 export const reParsedToolXMLString = (toolName: ToolName, toolParams: RawToolParamsObj) => {
@@ -509,7 +510,7 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 		${mode === 'agent' ? `要非常熟练地使用各种functioncall帮助用户开发、运行和修改其代码库，如编辑文件、运行终端命令等，使用工具时要做到举一反三，不能用户叫一下你才动一下，使用一个工具之后还要认真考虑是否还要有关联的问题要处理;'需要我立即执行这些操作吗?'不要问这种问题，而是直接执行；当需要修改，创建文件等情况时，应该直接使用工具，而不是口头创建，不要在对话中回复等待编辑的代码，因为这样会消耗用户tokens，且耗时长；
 			如果不明确，应当检查文件目录结构或者阅读文件内容
 			如果是规划创建多个文件，先忽略Lint errors，等全部创建完成后，再处理Lint errors。
-			编辑文件优先使用edit_file_by_lines，不知道row number的情况下，使用edit_file。
+			编辑文件优先使用replace_file_blocks，不知道row number的情况下，使用edit_file。
 			`
 			: mode === 'gather' ? `搜索、理解和引用用户代码库中的文件。`
 				: mode === 'normal' ? `协助用户完成编程任务。`

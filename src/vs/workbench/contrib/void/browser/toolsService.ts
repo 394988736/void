@@ -245,7 +245,7 @@ export class ToolsService implements IToolsService {
 				return { uri, searchReplaceBlocks }
 			},
 
-			edit_file_by_lines: (params: RawToolParamsObj) => {
+			replace_file_blocks: (params: RawToolParamsObj) => {
 				const { uri: uriStr, original_line_count: originalContentTotalLineCountUnknown } = params// new_content: newContentUnknown
 				const uri = validateURI(uriStr)
 				const originalContentTotalLineCount = validateNumber(originalContentTotalLineCountUnknown, { default: null }) || 0
@@ -476,7 +476,7 @@ export class ToolsService implements IToolsService {
 
 				return { result: lintErrorsPromise }
 			},
-			edit_file_by_lines: async ({ uri, original_line_count, edits }) => {
+			replace_file_blocks: async ({ uri, original_line_count, edits }) => {
 				// 初始化模型
 				await voidModelService.initializeModel(uri)
 				const { model } = await voidModelService.getModelSafe(uri)
@@ -614,7 +614,7 @@ export class ToolsService implements IToolsService {
 
 				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}`
 			},
-			edit_file_by_lines: (params, result) => {
+			replace_file_blocks: (params, result) => {
 				const lintErrsString = (
 					this.voidSettingsService.state.globalSettings.includeToolLintErrors ?
 						(result.lintErrors ? ` Lint errors found after change:\n${stringifyLintErrors(result.lintErrors)}.\nIf this is related to a change made while calling this tool, you might want to fix the error.`

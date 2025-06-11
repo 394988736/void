@@ -895,7 +895,7 @@ const ToolHeaderWrapper = ({
 
 
 
-const EditTool = ({ toolMessage, threadId, messageIdx, content }: Parameters<ResultWrapper<'edit_file' | 'rewrite_file'|'edit_file_by_lines'>>[0] & { content: string }) => {
+const EditTool = ({ toolMessage, threadId, messageIdx, content }: Parameters<ResultWrapper<'edit_file' | 'rewrite_file' | 'replace_file_blocks'>>[0] & { content: string }) => {
 	const accessor = useAccessor()
 	const isError = false
 	const isRejected = toolMessage.type === 'rejected'
@@ -1403,11 +1403,10 @@ const titleOfBuiltinToolName = {
 	'create_file_or_folder': { done: `Created`, proposed: `Create`, running: loadingTitleWrapper(`Creating`) },
 	'delete_file_or_folder': { done: `Deleted`, proposed: `Delete`, running: loadingTitleWrapper(`Deleting`) },
 	'edit_file': { done: `Edited file`, proposed: 'Edit file', running: loadingTitleWrapper('Editing file') },
-	'edit_file_by_lines': { done: `Edited file by line`, proposed: 'Edit file by line', running: loadingTitleWrapper('Editing file') },
+	'replace_file_blocks': { done: `Edited file`, proposed: 'Edit file', running: loadingTitleWrapper('Editing file') },
 	'rewrite_file': { done: `Wrote file`, proposed: 'Write file', running: loadingTitleWrapper('Writing file') },
 	'run_command': { done: `Ran terminal`, proposed: 'Run terminal', running: loadingTitleWrapper('Running terminal') },
 	'run_persistent_command': { done: `Ran terminal`, proposed: 'Run terminal', running: loadingTitleWrapper('Running terminal') },
-
 	'open_persistent_terminal': { done: `Opened terminal`, proposed: 'Open terminal', running: loadingTitleWrapper('Opening terminal') },
 	'kill_persistent_terminal': { done: `Killed terminal`, proposed: 'Kill terminal', running: loadingTitleWrapper('Killing terminal') },
 
@@ -1519,8 +1518,8 @@ const toolNameToDesc = (toolName: BuiltinToolName, _toolParams: BuiltinToolCallP
 				desc1Info: getRelative(toolParams.uri, accessor),
 			}
 		},
-		'edit_file_by_lines': () => {
-			const toolParams = _toolParams as BuiltinToolCallParams['edit_file_by_lines']
+		'replace_file_blocks': () => {
+			const toolParams = _toolParams as BuiltinToolCallParams['replace_file_blocks']
 			return {
 				desc1: getBasename(toolParams.uri.fsPath),
 				desc1Info: getRelative(toolParams.uri, accessor),
@@ -1718,7 +1717,7 @@ const BottomChildren = ({ children, title }: { children: React.ReactNode, title:
 }
 
 
-const EditToolHeaderButtons = ({ applyBoxId, uri, codeStr, toolName, threadId }: { threadId: string, applyBoxId: string, uri: URI, codeStr: string, toolName: 'edit_file' | 'rewrite_file' |'edit_file_by_lines'}) => {
+const EditToolHeaderButtons = ({ applyBoxId, uri, codeStr, toolName, threadId }: { threadId: string, applyBoxId: string, uri: URI, codeStr: string, toolName: 'edit_file' | 'rewrite_file' | 'replace_file_blocks' }) => {
 	const { streamState } = useEditToolStreamState({ applyBoxId, uri })
 	return <div className='flex items-center gap-1'>
 		{/* <StatusIndicatorForApplyButton applyBoxId={applyBoxId} uri={uri} /> */}
@@ -2358,9 +2357,9 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 			return <EditTool {...params} content={params.toolMessage.params.searchReplaceBlocks} />
 		}
 	},
-'edit_file_by_lines': {
+	'replace_file_blocks': {
 		resultWrapper: (params) => {
-			return <EditTool {...params} content={params.toolMessage.params.newContent} />
+			return <EditTool {...params} content={params.toolMessage.params.uri.path||params.toolMessage.name} />
 		}
 	},
 	// ---
