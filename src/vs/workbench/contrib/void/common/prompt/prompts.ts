@@ -196,7 +196,7 @@ export const builtinTools: {
 
 	read_file: {
 		name: 'read_file',
-		description: `返回给定文件的完整内容。`,
+		description: `返回给定文件的完整内容。(每行前面虚构的行号[row_index]，方便定位行号,实际上原文是没有的，这个要注意）`,
 		params: {
 			...uriParam('file'),
 			start_line: { description: '可选。除非明确给出了确切的行号进行搜索，否则不要填写此字段。默认为文件开头。' },
@@ -295,13 +295,31 @@ export const builtinTools: {
 			search_replace_blocks: { description: replaceTool_description }
 		},
 	},
-
+	edit_file_by_lines: {
+		name: 'edit_file_by_lines',
+		description: `编辑文件中指定行号范围的内容。必须提供：
+		- 文件URI
+		- 新的内容
+		- 可选的行号范围（默认编辑整个文件）`,
+		params: {
+			...uriParam('file'),
+			start_line: {
+				description: '开始行号（从1开始计数，留空或设为null表示从文件开头开始）',
+			},
+			end_line: {
+				description: '结束行号（留空或设为null表示到文件末尾结束）',
+			},
+			new_content: {
+				description: '要插入的新内容（将完全替换指定行号范围内的内容）注意不要带有行号，比如[01]',
+			}
+		}
+	},
 	rewrite_file: {
 		name: 'rewrite_file',
 		description: `编辑文件，删除所有旧内容并用你的新内容替换。如果你想编辑刚创建的文件，请使用此工具。创建完之后不需要重复回复用户创建的文件内容。`,
 		params: {
 			...uriParam('file'),
-			new_content: { description: `文件的新内容。必须是字符串。` }
+			new_content: { description: `文件的新内容。必须是字符串。注意不要带有行号，比如[01]` }
 		},
 	},
 	run_command: {
@@ -431,6 +449,7 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 		${mode === 'agent' ? `要非常熟练地使用各种functioncall帮助用户开发、运行和修改其代码库，与用户交互时，应该主动地使用工具，如编辑文件、运行终端命令等;'需要我立即执行这些操作吗?'不要问这种问题，而是直接执行；当需要修改，创建文件等情况时，应该直接使用工具，而不是口头创建，不要在对话中回复等待编辑的代码，因为这样会消耗用户tokens，且耗时长；
 			如果不明确，应当检查文件目录结构或者阅读文件内容
 			如果是规划创建多个文件，先忽略Lint errors，等全部创建完成后，再处理Lint errors。
+			编辑文件优先使用edit_file_by_lines，不知道row number的情况下，使用edit_file。
 			`
 			: mode === 'gather' ? `搜索、理解和引用用户代码库中的文件。`
 				: mode === 'normal' ? `协助用户完成编程任务。`
