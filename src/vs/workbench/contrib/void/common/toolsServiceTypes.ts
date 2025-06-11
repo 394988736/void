@@ -58,11 +58,8 @@ export type BuiltinToolCallParams = {
 	// 支持多处基于行号的编辑
 	'edit_file_by_lines': {
 		uri: URI;
-		edits: {
-			startLine?: number | null;
-			endLine?: number | null;
-			newContent: string;
-		}[];
+		original_line_count: number;
+		edits: EditByLinesItem[];
 	},
 	'create_file_or_folder': { uri: URI, isFolder: boolean },
 	'delete_file_or_folder': { uri: URI, isRecursive: boolean, isFolder: boolean },
@@ -108,3 +105,8 @@ export type BuiltinToolParamName = { [T in BuiltinToolName]: BuiltinToolParamNam
 
 export type ToolName = BuiltinToolName | (string & {})
 export type ToolParamName<T extends ToolName> = T extends BuiltinToolName ? BuiltinToolParamNameOfTool<T> : string
+export type EditByLinesItem = {
+	startLine?: number | null;
+	endLine?: number | null;
+	newContent: string;
+};

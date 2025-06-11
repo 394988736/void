@@ -11,6 +11,7 @@ import { os } from '../helpers/systemInfo.js';
 import { RawToolParamsObj } from '../sendLLMMessageTypes.js';
 import { approvalTypeOfBuiltinToolName, BuiltinToolCallParams, BuiltinToolName, BuiltinToolResultType, ToolName } from '../toolsServiceTypes.js';
 import { ChatMode } from '../voidSettingsTypes.js';
+import { LineNumberService } from '../../browser/helpers/LineNumberService.js'
 
 // Triple backtick wrapper used throughout the prompts for code blocks
 export const tripleTick = ['```', '```']
@@ -43,15 +44,15 @@ export const FINAL = `>>>>>>> UPDATED`
 
 const searchReplaceBlockTemplate = `\
 ${ORIGINAL}
-// ... original code goes here
+// ... original code without rowindex goes here
 ${DIVIDER}
-// ... final code goes here
+// ... final code without rowindex goes here
 ${FINAL}
 
 ${ORIGINAL}
-// ... original code goes here
+// ... original code without rowindex goes here
 ${DIVIDER}
-// ... final code goes here
+// ... final code without rowindex goes here
 ${FINAL}`
 
 
@@ -134,15 +135,20 @@ ${tripleTick[1]}`
 
 
 
+export type ParamDefinition = {
+
+	description: string;
+	required?: boolean;
+};
+
 export type InternalToolInfo = {
-	name: string,
-	description: string,
+	name: string;
+	description: string;
 	params: {
-		[paramName: string]: { description: string }
-	},
-	// Only if the tool is from an MCP server
-	mcpServerName?: string,
-}
+		[paramName: string]: ParamDefinition;
+	};
+	mcpServerName?: string;
+};
 
 
 
@@ -156,7 +162,7 @@ const paginationParam = {
 
 
 
-const terminalDescHelper = `你可以使用此工具运行任何命令：sed、grep等。不要使用此工具编辑文件；请使用edit_file代替。当使用git和其他打开编辑器的工具（如git diff）时，你应该通过管道传递给cat以获取所有结果而不被卡在vim中， 注意Windows中，&& 不是有效的语句分隔符,可以使用分号 ; 来分隔命令。比如在windows中这是错的：$ cd d:\demo\llm-agent-service && npx ts-node src/index.ts;这是对的:$ cd d:\demo\llm-agent-service; npx ts-node src/index.ts`
+const terminalDescHelper = `你可以使用此工具运行任何命令：sed、grep等。不要使用此工具编辑文件；请使用edit_file_by_lines代替。当使用git和其他打开编辑器的工具（如git diff）时，你应该通过管道传递给cat以获取所有结果而不被卡在vim中， 注意Windows中，&& 不是有效的语句分隔符,可以使用分号 ; 来分隔命令。比如在windows中这是错的：$ cd d:\demo\llm-agent-service && npx ts-node src/index.ts;这是对的:$ cd d:\demo\llm-agent-service; npx ts-node src/index.ts`
 
 const cwdHelper = '可选。运行命令的目录。默认为第一个工作区文件夹。'
 
@@ -282,7 +288,7 @@ export const builtinTools: {
 
 	edit_file: {
 		name: 'edit_file',
-		description: `编辑文件内容。你必须提供文件的URI以及将用于应用编辑的单个SEARCH/REPLACE块字符串,一定要注意params要求的格式，极大概率会出现error。`,
+		description: `编辑文件内容。你必须提供文件的URI以及将用于应用编辑的单个SEARCH/REPLACE块字符串,ORIGINAL中你要删除行序号[1][2][3]...`,
 		params: {
 			...uriParam('file'),
 			search_replace_blocks: { description: replaceTool_description }
@@ -290,89 +296,63 @@ export const builtinTools: {
 	},
 	edit_file_by_lines: {
 		name: 'edit_file_by_lines',
-		description: `通过行号范围编辑文件内容。支持：
-		- 单次编辑：提供 start_line 和 end_line
-		- 多次编辑：提供 edits 数组，包含多个编辑块
+		description: `通过行号范围编辑文件内容。(注意：行号是从1开始的，不是从0开始的)支持：
+		- 单次/多次编辑：提供 edits 数组，包含多个编辑块
 		必须提供：
 		- 文件URI
 		- 每个编辑块的新内容
-		- 可选的行号范围（默认为整个文件）`,
+		- 每个编辑块的行号范围：startLine, endLine(系统会自动截取文件中此范围的代码块代为ORIGINAL_BLOCK进行REPLACE)
+		- 原文件的总行号：original_line_count`,
 		params: {
-			...uriParam('file'),
-			start_line: {
-				type: ['integer', 'null'],
-				description: '开始行号（从1开始计数，留空或设为null表示从文件开头开始）'
+			uri: {
+				description: '要编辑的文件 URI'
 			},
-			end_line: {
-				type: ['integer', 'null'],
-				description: '结束行号（留空或设为null表示到文件末尾结束）'
-			},
-			new_content: {
-				type: 'string',
-				description: '要插入的新内容（将完全替换指定行号范围内的内容）。注意不要带有行号，比如[01]'
-			},
-			edits: {
-
-				start_line: {
-					type: ['integer', 'null'],
-					description: '开始行号（从1开始计数，留空或设为null表示从文件开头开始）'
-				},
-				end_line: {
-					type: ['integer', 'null'],
-					description: '结束行号（留空或设为null表示到文件末尾结束）'
-				},
-				new_content: {
-					type: 'string',
-					required: true,
-					description: '要插入的新内容（将完全替换指定行号范围内的内容）'
-				}
-			},
-			description: '多个编辑块数组。每个编辑块可单独指定行号范围和内容。如果提供了此字段，则忽略顶层的 start_line/end_line/new_content'
+			original_line_count: { description: '原文件的总行号；用来校对版本是否正确,必须提供' },
+			edits: { description: '编辑块' }
 		}
 	},
-},
 	rewrite_file: {
 		name: 'rewrite_file',
 		description: `编辑文件，删除所有旧内容并用你的新内容替换。如果你想编辑刚创建的文件，请使用此工具。创建完之后不需要重复回复用户创建的文件内容。`,
 		params: {
 			...uriParam('file'),
-	new_content: { description: `文件的新内容。必须是字符串。注意不要带有行号，比如[01]` }
+			new_content: { description: `文件的新内容。必须是字符串。注意不要带有行号，比如[01]` }
 		},
 	},
-run_command: {
-	name: 'run_command',
+	run_command: {
+		name: 'run_command',
 		description: `运行终端命令并等待结果（在${MAX_TERMINAL_INACTIVE_TIME}秒不活动后超时）。${terminalDescHelper}`,
-			params: {
-		command: { description: '要运行的终端命令。' },
-		cwd: { description: cwdHelper },
+		params: {
+			command: { description: '要运行的终端命令。' },
+			cwd: { description: cwdHelper },
+		},
 	},
-},
 
-run_persistent_command: {
-	name: 'run_persistent_command',
+	run_persistent_command: {
+		name: 'run_persistent_command',
 		description: `在使用open_persistent_terminal创建的持久终端中运行终端命令（${MAX_TERMINAL_BG_COMMAND_TIME}秒后返回结果，命令继续在后台运行）。${terminalDescHelper}`,
-			params: {
-		command: { description: '要运行的终端命令。' },
-		persistent_terminal_id: { description: '使用open_persistent_terminal创建的终端ID。' },
+		params: {
+			command: { description: '要运行的终端命令。' },
+			persistent_terminal_id: { description: '使用open_persistent_terminal创建的终端ID。' },
+		},
 	},
-},
 
 
 
-open_persistent_terminal: {
-	name: 'open_persistent_terminal',
+	open_persistent_terminal: {
+		name: 'open_persistent_terminal',
 		description: `当你想无限期运行终端命令时使用此工具，如开发服务器（例如\`npm run dev\`）、后台监听器等。在用户环境中打开一个新终端，不会被等待或杀死。`,
-			params: {
-		cwd: { description: cwdHelper },
-	}
-},
+		params: {
+			cwd: { description: cwdHelper },
+		}
+	},
 
 
-kill_persistent_terminal: {
-	name: 'kill_persistent_terminal',
+	kill_persistent_terminal: {
+		name: 'kill_persistent_terminal',
 		description: `中断并关闭使用open_persistent_terminal打开的持久终端。`,
-			params: { persistent_terminal_id: { description: `持久终端的ID。` } }
-}
+		params: { persistent_terminal_id: { description: `持久终端的ID。` } }
+	}
 
 
 	// go_to_definition
@@ -413,18 +393,81 @@ export const availableTools = (chatMode: ChatMode | null, mcpTools: InternalTool
 	return tools
 }
 
-const toolCallDefinitionsXMLString = (tools: InternalToolInfo[]) => {
-	return `${tools.map((t, i) => {
-		const params = Object.keys(t.params).map(paramName => `<${paramName}>${t.params[paramName].description}</${paramName}>`).join('\n')
-		return `\
-    ${i + 1}. ${t.name}
-    Description: ${t.description}
-    Format:
-    <${t.name}>${!params ? '' : `\n${params}`}
-    </${t.name}>`
-	}).join('\n\n')}`
-}
+const toolCallDefinitionsXMLString = (tools: InternalToolInfo[]): string => {
+	return tools
+		.filter(t => t.name !== 'edit_file')
+		.map((t, i) => {
+			// 特殊处理 edit_file_by_lines
+			if (t.name === 'edit_file_by_lines') {
+				const formatted = formatEditFileByLinesTool(t);
+				return `\
+${i + 1}. ${t.name}
+Description: ${t.description}
+Format:
+${formatted}`;
+			}
 
+			// 默认处理其他工具
+			const params = Object.keys(t.params)
+				.map(paramName => `<${paramName}>${t.params[paramName].description}</${paramName}>`)
+				.join('\n');
+
+			return `\
+${i + 1}. ${t.name}
+Description: ${t.description}
+Format:
+<${t.name}>${params ? '\n' + params : ''}
+</${t.name}>`;
+		})
+		.join('\n\n');
+};
+/**
+ * 为 edit_file_by_lines 工具生成专属的 XML 格式描述
+ */
+function formatEditFileByLinesTool(tool: InternalToolInfo): string {
+	const { name, params } = tool;
+
+	const paramLines = Object.keys(params).map(paramName => {
+		const paramDef = params[paramName];
+
+		if (paramName === 'edits') {
+			return `  <edits>
+    <!-- 每个 item 表示一处编辑操作 -->
+    <edit>
+      <startLine>开始行号（从1开始计数，可为 null）</startLine>
+      <endLine>结束行号（可为 null）</endLine>
+      <newContent>要插入的新内容（完全替换指定范围）</newContent>
+    </edit>
+  </edits>`;
+		}
+
+		// 其他参数直接显示描述
+		return `  <${paramName}>${paramDef.description}</${paramName}>`;
+	});
+
+	const paramsXml = paramLines.join('\n');
+
+	return `<${name}>
+${paramsXml}
+</${name}>`;
+}
+/*
+edit_file_by_lines
+Description: 通过行号范围编辑文件内容，支持多处修改
+Format:
+<edit_file_by_lines>
+  <uri>要编辑的文件 URI</uri>
+  <edits>
+	<!-- 每个 item 表示一处编辑操作 -->
+	<item>
+	  <startLine>开始行号（从1开始计数，可为 null）</startLine>
+	  <endLine>结束行号（可为 null）</endLine>
+	  <newContent>要插入的新内容（完全替换指定范围）</newContent>
+	</item>
+  </edits>
+</edit_file_by_lines>
+
+*/
 export const reParsedToolXMLString = (toolName: ToolName, toolParams: RawToolParamsObj) => {
 	const params = Object.keys(toolParams).map(paramName => `<${paramName}>${toolParams[paramName]}</${paramName}>`).join('\n')
 	return `\
@@ -618,8 +661,10 @@ export const messageOfSelection = async (
 
 	if (s.type === 'File' || s.type === 'CodeSelection') {
 		const { val } = await readFile(opts.fileService, s.uri, DEFAULT_FILE_SIZE_LIMIT)
+		const valWithRowIndex = LineNumberService.addLineNumbers(val || '')
+
 		const lineNumAdd = s.type === 'CodeSelection' ? lineNumAddition(s.range) : ''
-		const content = val === null ? 'null' : `${tripleTick[0]}${s.language}\n${val}\n${tripleTick[1]}`
+		const content = valWithRowIndex === null ? 'null' : `${tripleTick[0]}${s.language}\n${valWithRowIndex}\n${tripleTick[1]}`
 		const str = `${s.uri.fsPath}${lineNumAdd}:\n${content}`
 		return str
 	}

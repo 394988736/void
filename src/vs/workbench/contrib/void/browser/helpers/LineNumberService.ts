@@ -15,13 +15,13 @@ export class LineNumberService {
 		if (!content) return content;
 
 		const {
-			format = '[{lineNumber}] ',
+			format = '[{lineNumber}]',
 			startAt = 1,
 			padding = 'auto',
 			excludeEmptyLines = false
 		} = options;
-
-		const lines = content.split('\n');
+		const normalizedContent = content.replace(/\r\n/g, '\n');
+		const lines = normalizedContent.split('\n');
 		const maxLineNumber = startAt + lines.length - 1;
 		const padLength = padding === 'auto'
 			? maxLineNumber.toString().length
@@ -47,25 +47,77 @@ export class LineNumberService {
 			})
 			.join('\n');
 	}
-
 	/**
-	 * Removes existing line numbers from text
+	 * Removes line numbers from text with support for various formats
 	 * @param content Text with line numbers
-	 * @param pattern Regex pattern to match line numbers
 	 * @returns Clean text without line numbers
 	 */
-	static removeLineNumbers(
+	static removeFixedLineNumbers(content: string): string {
+		if (!content) return content;
+		return content.replace(/^\[\d+\](\s*)/gm, '$1'); // 保留序号后的空格
+		// 精确匹配行首的 [数字] + 1个空格，其他空格保留
+		// return content.replace(/^\[\d+\] /gm, '');
+	}
+	/**
+	 * Gets a content fragment between specified line numbers
+	 * @param content The text content to process
+	 * @param startLine 1-based starting line number (inclusive)
+	 * @param endLine 1-based ending line number (inclusive)
+	 * @param options Configuration options
+	 * @returns The content fragment between the specified lines
+	 */
+	static getContentFragment(
 		content: string,
-		pattern: RegExp = /^\[\d+\]\s?/
+		startLine: number,
+		endLine: number,
+		options: GetContentFragmentOptions = {}
 	): string {
 		if (!content) return content;
-		return content
-			.split('\n')
-			.map(line => line.replace(pattern, ''))
-			.join('\n');
-	}
-}
+		if (startLine < 1) startLine = 1;
+		if (endLine < startLine) endLine = startLine;
 
+		const {
+			includeLineNumbers = false,
+			lineNumberOptions = {},
+			trimEmptyLines = false
+		} = options;
+		const normalizedContent = content.replace(/\r\n/g, '\n');
+		const lines = normalizedContent.split('\n');
+		const fragmentLines = lines.slice(startLine - 1, endLine);
+
+		// Apply trimming if requested
+		let resultLines = trimEmptyLines
+			? fragmentLines.filter(line => line.trim().length > 0)
+			: fragmentLines;
+
+		// Add line numbers if requested
+		if (includeLineNumbers) {
+			const numberedContent = resultLines.join('\n');
+			return this.addLineNumbers(numberedContent, {
+				...lineNumberOptions,
+				startAt: startLine
+			});
+		}
+
+		return resultLines.join('\n');
+	}
+
+
+}
+export interface RemoveLineNumberOptions {
+	/**
+	 * Original line number format used (if known)
+	 * Helps create more accurate removal pattern
+	 * @default '[{lineNumber}]'
+	 */
+	format?: string;
+
+	/**
+	 * Whether to preserve indentation (whitespace before line numbers)
+	 * @default true
+	 */
+	preserveIndentation?: boolean;
+}
 export interface LineNumberOptions {
 	/**
 	 * Format string for line numbers
@@ -95,4 +147,22 @@ export interface LineNumberOptions {
 	 * @default false
 	 */
 	excludeEmptyLines?: boolean;
+}
+export interface GetContentFragmentOptions {
+	/**
+	 * Whether to include line numbers in the fragment
+	 * @default true
+	 */
+	includeLineNumbers?: boolean;
+
+	/**
+	 * Options for line number formatting when includeLineNumbers is true
+	 */
+	lineNumberOptions?: LineNumberOptions;
+
+	/**
+	 * Whether to trim empty lines from the fragment
+	 * @default true
+	 */
+	trimEmptyLines?: boolean;
 }
