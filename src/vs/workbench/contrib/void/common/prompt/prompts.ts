@@ -189,7 +189,7 @@ export const builtinTools: {
 
 	read_file: {
 		name: 'read_file',
-		description: `返回给定文件的完整内容。`,
+		description: `返回给定文件的完整内容。(每行前面虚构的行号[row_index]，方便定位行号,实际上原文是没有的，这个要注意）`,
 		params: {
 			...uriParam('file'),
 			start_line: { description: '可选。除非明确给出了确切的行号进行搜索，否则不要填写此字段。默认为文件开头。' },
@@ -288,49 +288,91 @@ export const builtinTools: {
 			search_replace_blocks: { description: replaceTool_description }
 		},
 	},
+	edit_file_by_lines: {
+		name: 'edit_file_by_lines',
+		description: `通过行号范围编辑文件内容。支持：
+		- 单次编辑：提供 start_line 和 end_line
+		- 多次编辑：提供 edits 数组，包含多个编辑块
+		必须提供：
+		- 文件URI
+		- 每个编辑块的新内容
+		- 可选的行号范围（默认为整个文件）`,
+		params: {
+			...uriParam('file'),
+			start_line: {
+				type: ['integer', 'null'],
+				description: '开始行号（从1开始计数，留空或设为null表示从文件开头开始）'
+			},
+			end_line: {
+				type: ['integer', 'null'],
+				description: '结束行号（留空或设为null表示到文件末尾结束）'
+			},
+			new_content: {
+				type: 'string',
+				description: '要插入的新内容（将完全替换指定行号范围内的内容）。注意不要带有行号，比如[01]'
+			},
+			edits: {
 
+				start_line: {
+					type: ['integer', 'null'],
+					description: '开始行号（从1开始计数，留空或设为null表示从文件开头开始）'
+				},
+				end_line: {
+					type: ['integer', 'null'],
+					description: '结束行号（留空或设为null表示到文件末尾结束）'
+				},
+				new_content: {
+					type: 'string',
+					required: true,
+					description: '要插入的新内容（将完全替换指定行号范围内的内容）'
+				}
+			},
+			description: '多个编辑块数组。每个编辑块可单独指定行号范围和内容。如果提供了此字段，则忽略顶层的 start_line/end_line/new_content'
+		}
+	},
+},
 	rewrite_file: {
 		name: 'rewrite_file',
 		description: `编辑文件，删除所有旧内容并用你的新内容替换。如果你想编辑刚创建的文件，请使用此工具。创建完之后不需要重复回复用户创建的文件内容。`,
 		params: {
 			...uriParam('file'),
-			new_content: { description: `文件的新内容。必须是字符串。` }
+	new_content: { description: `文件的新内容。必须是字符串。注意不要带有行号，比如[01]` }
 		},
 	},
-	run_command: {
-		name: 'run_command',
+run_command: {
+	name: 'run_command',
 		description: `运行终端命令并等待结果（在${MAX_TERMINAL_INACTIVE_TIME}秒不活动后超时）。${terminalDescHelper}`,
-		params: {
-			command: { description: '要运行的终端命令。' },
-			cwd: { description: cwdHelper },
-		},
+			params: {
+		command: { description: '要运行的终端命令。' },
+		cwd: { description: cwdHelper },
 	},
+},
 
-	run_persistent_command: {
-		name: 'run_persistent_command',
+run_persistent_command: {
+	name: 'run_persistent_command',
 		description: `在使用open_persistent_terminal创建的持久终端中运行终端命令（${MAX_TERMINAL_BG_COMMAND_TIME}秒后返回结果，命令继续在后台运行）。${terminalDescHelper}`,
-		params: {
-			command: { description: '要运行的终端命令。' },
-			persistent_terminal_id: { description: '使用open_persistent_terminal创建的终端ID。' },
-		},
+			params: {
+		command: { description: '要运行的终端命令。' },
+		persistent_terminal_id: { description: '使用open_persistent_terminal创建的终端ID。' },
 	},
+},
 
 
 
-	open_persistent_terminal: {
-		name: 'open_persistent_terminal',
+open_persistent_terminal: {
+	name: 'open_persistent_terminal',
 		description: `当你想无限期运行终端命令时使用此工具，如开发服务器（例如\`npm run dev\`）、后台监听器等。在用户环境中打开一个新终端，不会被等待或杀死。`,
-		params: {
-			cwd: { description: cwdHelper },
-		}
-	},
-
-
-	kill_persistent_terminal: {
-		name: 'kill_persistent_terminal',
-		description: `中断并关闭使用open_persistent_terminal打开的持久终端。`,
-		params: { persistent_terminal_id: { description: `持久终端的ID。` } }
+			params: {
+		cwd: { description: cwdHelper },
 	}
+},
+
+
+kill_persistent_terminal: {
+	name: 'kill_persistent_terminal',
+		description: `中断并关闭使用open_persistent_terminal打开的持久终端。`,
+			params: { persistent_terminal_id: { description: `持久终端的ID。` } }
+}
 
 
 	// go_to_definition
@@ -424,6 +466,7 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 		${mode === 'agent' ? `要非常熟练地使用各种functioncall帮助用户开发、运行和修改其代码库，如编辑文件、运行终端命令等，使用工具时要做到举一反三，不能用户叫一下你才动一下，使用一个工具之后还要认真考虑是否还要有关联的问题要处理;'需要我立即执行这些操作吗?'不要问这种问题，而是直接执行；当需要修改，创建文件等情况时，应该直接使用工具，而不是口头创建，不要在对话中回复等待编辑的代码，因为这样会消耗用户tokens，且耗时长；
 			如果不明确，应当检查文件目录结构或者阅读文件内容
 			如果是规划创建多个文件，先忽略Lint errors，等全部创建完成后，再处理Lint errors。
+			编辑文件优先使用edit_file_by_lines，不知道row number的情况下，使用edit_file。
 			`
 			: mode === 'gather' ? `搜索、理解和引用用户代码库中的文件。`
 				: mode === 'normal' ? `协助用户完成编程任务。`

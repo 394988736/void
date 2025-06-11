@@ -1199,7 +1199,66 @@ class EditCodeService extends Disposable implements IEditCodeService {
 		onDone()
 	}
 
+	public instantlyReplaceRangeWithText({
+		uri,
+		startLine,
+		endLine,
+		newText
+	}: {
+		uri: URI;
+		startLine: number;
+		endLine: number;
+		newText: string;
+	}) {
+		const { model } = this._voidModelService.getModel(uri);
+		if (!model) {
+			throw new Error(`File does not exist or could not be loaded.`);
+		}
 
+		// 获取当前文件内容，用于后续处理（如 diff、刷新等）
+		// const fullFileContent = model.getValue(EndOfLinePreference.LF);
+
+		// 确保传入的行号合法
+		const lineCount = model.getLineCount();
+		if (
+			startLine < 1 ||
+			endLine > lineCount ||
+			startLine > endLine
+		) {
+			throw new Error(
+				`Invalid line range: start_line must be >= 1 and <= end_line <= ${lineCount}`
+			);
+		}
+
+		// 构造一个 IRange 表示要替换的区域
+		const range: IRange = {
+			startLineNumber: startLine,
+			startColumn: 1,
+			endLineNumber: endLine,
+			endColumn: model.getLineMaxColumn(endLine),
+		};
+
+		// 标记我们正在写入内容，防止递归调用
+		this.weAreWriting = true;
+
+		// 应用编辑：替换指定范围的内容
+		model.applyEdits([
+			{
+				range,
+				text: newText,
+			},
+		]);
+
+		this.weAreWriting = false;
+
+		// 刷新所有与该文件相关的 UI 元素（diff、高亮、装饰等）
+		this._refreshStylesAndDiffsInURI(uri);
+
+		// 可选：保存文件
+		this._voidModelService.saveModel(uri).catch((err) => {
+			console.error('Failed to save file after replacement:', err);
+		});
+	}
 	public instantlyRewriteFile({ uri, newContent }: { uri: URI, newContent: string }) {
 		// start diffzone
 		const res = this._startStreamingDiffZone({

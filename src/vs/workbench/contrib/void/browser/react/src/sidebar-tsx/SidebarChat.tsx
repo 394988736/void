@@ -895,7 +895,7 @@ const ToolHeaderWrapper = ({
 
 
 
-const EditTool = ({ toolMessage, threadId, messageIdx, content }: Parameters<ResultWrapper<'edit_file' | 'rewrite_file'>>[0] & { content: string }) => {
+const EditTool = ({ toolMessage, threadId, messageIdx, content }: Parameters<ResultWrapper<'edit_file' | 'rewrite_file'|'edit_file_by_lines'>>[0] & { content: string }) => {
 	const accessor = useAccessor()
 	const isError = false
 	const isRejected = toolMessage.type === 'rejected'
@@ -1403,6 +1403,7 @@ const titleOfBuiltinToolName = {
 	'create_file_or_folder': { done: `Created`, proposed: `Create`, running: loadingTitleWrapper(`Creating`) },
 	'delete_file_or_folder': { done: `Deleted`, proposed: `Delete`, running: loadingTitleWrapper(`Deleting`) },
 	'edit_file': { done: `Edited file`, proposed: 'Edit file', running: loadingTitleWrapper('Editing file') },
+	'edit_file_by_lines': { done: `Edited file by line`, proposed: 'Edit file by line', running: loadingTitleWrapper('Editing file') },
 	'rewrite_file': { done: `Wrote file`, proposed: 'Write file', running: loadingTitleWrapper('Writing file') },
 	'run_command': { done: `Ran terminal`, proposed: 'Run terminal', running: loadingTitleWrapper('Running terminal') },
 	'run_persistent_command': { done: `Ran terminal`, proposed: 'Run terminal', running: loadingTitleWrapper('Running terminal') },
@@ -1513,6 +1514,13 @@ const toolNameToDesc = (toolName: BuiltinToolName, _toolParams: BuiltinToolCallP
 		},
 		'edit_file': () => {
 			const toolParams = _toolParams as BuiltinToolCallParams['edit_file']
+			return {
+				desc1: getBasename(toolParams.uri.fsPath),
+				desc1Info: getRelative(toolParams.uri, accessor),
+			}
+		},
+		'edit_file_by_lines': () => {
+			const toolParams = _toolParams as BuiltinToolCallParams['edit_file_by_lines']
 			return {
 				desc1: getBasename(toolParams.uri.fsPath),
 				desc1Info: getRelative(toolParams.uri, accessor),
@@ -1710,7 +1718,7 @@ const BottomChildren = ({ children, title }: { children: React.ReactNode, title:
 }
 
 
-const EditToolHeaderButtons = ({ applyBoxId, uri, codeStr, toolName, threadId }: { threadId: string, applyBoxId: string, uri: URI, codeStr: string, toolName: 'edit_file' | 'rewrite_file' }) => {
+const EditToolHeaderButtons = ({ applyBoxId, uri, codeStr, toolName, threadId }: { threadId: string, applyBoxId: string, uri: URI, codeStr: string, toolName: 'edit_file' | 'rewrite_file' |'edit_file_by_lines'}) => {
 	const { streamState } = useEditToolStreamState({ applyBoxId, uri })
 	return <div className='flex items-center gap-1'>
 		{/* <StatusIndicatorForApplyButton applyBoxId={applyBoxId} uri={uri} /> */}
@@ -2350,7 +2358,11 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 			return <EditTool {...params} content={params.toolMessage.params.searchReplaceBlocks} />
 		}
 	},
-
+'edit_file_by_lines': {
+		resultWrapper: (params) => {
+			return <EditTool {...params} content={params.toolMessage.params.newContent} />
+		}
+	},
 	// ---
 
 	'run_command': {

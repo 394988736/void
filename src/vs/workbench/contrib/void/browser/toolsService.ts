@@ -19,7 +19,7 @@ import { RawToolParamsObj } from '../common/sendLLMMessageTypes.js'
 import { MAX_CHILDREN_URIs_PAGE, MAX_FILE_CHARS_PAGE, MAX_TERMINAL_BG_COMMAND_TIME, MAX_TERMINAL_INACTIVE_TIME } from '../common/prompt/prompts.js'
 import { IVoidSettingsService } from '../common/voidSettingsService.js'
 import { generateUuid } from '../../../../base/common/uuid.js'
-
+import { LineNumberService } from './helpers/LineNumberService.js'
 
 // tool use for AI
 type ValidateBuiltinParams = { [T in BuiltinToolName]: (p: RawToolParamsObj) => BuiltinToolCallParams[T] }
@@ -243,6 +243,55 @@ export class ToolsService implements IToolsService {
 				return { uri, searchReplaceBlocks }
 			},
 
+			edit_file_by_lines: (params: RawToolParamsObj) => {
+				const { uri: uriStr, new_content: newContentUnknown } = params
+				const uri = validateURI(uriStr)
+				const newContent = validateStr('newContent', newContentUnknown)
+
+				// 支持多个编辑块，每个块可以有 startLine/endLine
+				const edits: { startLine?: number | null; endLine?: number | null; newContent: string }[] = []
+
+				// 处理单个编辑块的情况（向后兼容）
+				if ('start_line' in params || 'end_line' in params) {
+					const startLine = validateNumber(params.start_line, { default: null })
+					const endLine = validateNumber(params.end_line, { default: null })
+
+					edits.push({
+						startLine: startLine !== null && startLine >= 1 ? startLine : null,
+						endLine: endLine !== null && endLine >= 1 ? endLine : null,
+						newContent,
+					})
+				} else {
+					// 假设你传入的是一个编辑数组，比如：
+					// edits: [ { start_line: 10, end_line: 12, new_content: "..." }, ... ]
+					const rawEdits = params.edits as Array<Record<string, any>> | undefined
+					if (Array.isArray(rawEdits)) {
+						for (const edit of rawEdits) {
+							const sl = validateNumber(edit.start_line, { default: null })
+							const el = validateNumber(edit.end_line, { default: null })
+							const nc = validateStr('newContent', edit.new_content)
+
+							edits.push({
+								startLine: sl !== null && sl >= 1 ? sl : null,
+								endLine: el !== null && el >= 1 ? el : null,
+								newContent: nc,
+							})
+						}
+					} else {
+						// 如果既没有单个 start_line，也没有 edits 数组，则默认替换整个文件
+						edits.push({
+							startLine: null,
+							endLine: null,
+							newContent,
+						})
+					}
+				}
+
+				return {
+					uri,
+					edits,
+				}
+			},
 			// ---
 
 			run_command: (params: RawToolParamsObj) => {
@@ -278,13 +327,13 @@ export class ToolsService implements IToolsService {
 				await voidModelService.initializeModel(uri)
 				const { model } = await voidModelService.getModelSafe(uri)
 				if (model === null) { throw new Error(`No contents; File does not exist.`) }
-
+				let startLineNumber = 1
 				let contents: string
 				if (startLine === null && endLine === null) {
 					contents = model.getValue(EndOfLinePreference.LF)
 				}
 				else {
-					const startLineNumber = startLine === null ? 1 : startLine
+					startLineNumber = startLine === null ? 1 : startLine
 					const endLineNumber = endLine === null ? model.getLineCount() : endLine
 					contents = model.getValueInRange({ startLineNumber, startColumn: 1, endLineNumber, endColumn: Number.MAX_SAFE_INTEGER }, EndOfLinePreference.LF)
 				}
@@ -293,7 +342,14 @@ export class ToolsService implements IToolsService {
 
 				const fromIdx = MAX_FILE_CHARS_PAGE * (pageNumber - 1)
 				const toIdx = MAX_FILE_CHARS_PAGE * pageNumber - 1
-				const fileContents = contents.slice(fromIdx, toIdx + 1) // paginate
+				let fileContents = contents.slice(fromIdx, toIdx + 1) // paginate
+
+				// Add line numbers with smart padding based on total lines
+				fileContents = LineNumberService.addLineNumbers(fileContents, {
+					format: '[{lineNumber}]',
+					padding: totalNumLines.toString().length,
+					startAt: startLineNumber + fromIdx
+				});
 				const hasNextPage = (contents.length - 1) - toIdx >= 1
 				const totalFileLen = contents.length
 				return { result: { fileContents, totalFileLen, hasNextPage, totalNumLines } }
@@ -427,6 +483,54 @@ export class ToolsService implements IToolsService {
 
 				return { result: lintErrorsPromise }
 			},
+			edit_file_by_lines: async ({ uri, edits }) => {
+				// 初始化模型
+				await voidModelService.initializeModel(uri)
+				const { model } = await voidModelService.getModelSafe(uri)
+				if (model === null) {
+					throw new Error(`File does not exist or could not be loaded.`)
+				}
+
+				// 检查是否有其他流式操作正在进行
+				if (this.commandBarService.getStreamState(uri) === 'streaming') {
+					throw new Error(`Another LLM is currently making changes to this file. Please stop streaming for now and ask the user to resume later.`)
+				}
+
+				// 准备应用编辑
+				await editCodeService.callBeforeApplyOrEdit(uri)
+
+				const lineCount = model.getLineCount()
+
+				// 遍历所有编辑项并应用
+				for (const edit of edits) {
+					const { startLine, endLine, newContent } = edit
+
+					// 确保行号有效
+					const safeStartLine = typeof startLine === 'number' ? startLine : 1
+					const safeEndLine = typeof endLine === 'number' ? endLine : lineCount
+
+					if (safeStartLine < 1 || safeEndLine > lineCount || safeStartLine > safeEndLine) {
+						throw new Error(`Invalid line range: start_line must be >= 1 and <= end_line <= ${lineCount}`)
+					}
+
+					// 替换文本范围
+					editCodeService.instantlyReplaceRangeWithText({
+						uri,
+						startLine: safeStartLine,
+						endLine: safeEndLine,
+						newText: newContent
+					})
+				}
+
+				// 可选：在短延迟后返回 lint 错误
+				const lintErrorsPromise = Promise.resolve().then(async () => {
+					await timeout(2000)
+					const { lintErrors } = this._getLintErrors(uri)
+					return { lintErrors }
+				})
+
+				return { result: lintErrorsPromise }
+			},
 			// ---
 			run_command: async ({ command, cwd, terminalId }) => {
 				const { resPromise, interrupt } = await this.terminalToolService.runCommand(command, { type: 'temporary', cwd, terminalId })
@@ -497,6 +601,15 @@ export class ToolsService implements IToolsService {
 				return `URI ${params.uri.fsPath} successfully deleted.`
 			},
 			edit_file: (params, result) => {
+				const lintErrsString = (
+					this.voidSettingsService.state.globalSettings.includeToolLintErrors ?
+						(result.lintErrors ? ` Lint errors found after change:\n${stringifyLintErrors(result.lintErrors)}.\nIf this is related to a change made while calling this tool, you might want to fix the error.`
+							: ` No lint errors found.`)
+						: '')
+
+				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}`
+			},
+			edit_file_by_lines: (params, result) => {
 				const lintErrsString = (
 					this.voidSettingsService.state.globalSettings.includeToolLintErrors ?
 						(result.lintErrors ? ` Lint errors found after change:\n${stringifyLintErrors(result.lintErrors)}.\nIf this is related to a change made while calling this tool, you might want to fix the error.`
