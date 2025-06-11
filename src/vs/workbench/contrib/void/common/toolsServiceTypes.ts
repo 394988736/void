@@ -55,11 +55,14 @@ export type BuiltinToolCallParams = {
 	'rewrite_file': { uri: URI, newContent: string },
 	'edit_file': { uri: URI, searchReplaceBlocks: string },
 	// Add the new line-based edit parameters
+	// 支持多处基于行号的编辑
 	'edit_file_by_lines': {
 		uri: URI;
-		startLine?: number | null;
-		endLine?: number | null;
-		newContent: string;
+		edits: {
+			startLine?: number | null;
+			endLine?: number | null;
+			newContent: string;
+		}[];
 	},
 	'create_file_or_folder': { uri: URI, isFolder: boolean },
 	'delete_file_or_folder': { uri: URI, isRecursive: boolean, isFolder: boolean },
