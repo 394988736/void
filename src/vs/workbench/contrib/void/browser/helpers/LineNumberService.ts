@@ -3,6 +3,26 @@
  */
 export class LineNumberService {
 	/**
+ * Gets the total number of lines in the content
+ * @param content The text content to count lines from
+ * @returns The number of lines
+ */
+	static getLineCount(content: string): number {
+		if (!content) return 0;
+
+		// Normalize line endings to \n and split
+		const normalizedContent = content.replace(/\r\n/g, '\n');
+		// Handle case where last line might be empty (no newline at EOF)
+		const lines = normalizedContent.split('\n');
+
+		// If last line is empty (due to trailing newline), don't count it
+		if (lines.length > 0 && lines[lines.length - 1] === '') {
+			return lines.length - 1;
+		}
+
+		return lines.length;
+	}
+	/**
 	 * Adds line numbers to each line of text
 	 * @param content The text content to process
 	 * @param options Configuration options
@@ -15,7 +35,6 @@ export class LineNumberService {
 		if (!content) return content;
 
 		const {
-			format = '[{lineNumber}]',
 			startAt = 1,
 			padding = 'auto',
 			excludeEmptyLines = false
@@ -36,7 +55,7 @@ export class LineNumberService {
 					.toString()
 					.padStart(padLength, '0');
 
-				const expectedPrefix = format.replace('{lineNumber}', formattedNumber);
+				const expectedPrefix = `[${formattedNumber}]  `;
 
 				// Check if line already starts with the exact same line number prefix
 				if (line.startsWith(expectedPrefix)) {
@@ -54,9 +73,9 @@ export class LineNumberService {
 	 */
 	static removeFixedLineNumbers(content: string): string {
 		if (!content) return content;
-		return content.replace(/^\[\d+\](\s*)/gm, '$1'); // 保留序号后的空格
+		// return content.replace(/^\[\d+\](\s*)/gm, '$1'); // 保留序号后的空格
 		// 精确匹配行首的 [数字] + 1个空格，其他空格保留
-		// return content.replace(/^\[\d+\] /gm, '');
+		return content.replace(/^\[\d+\]  /gm, '');
 	}
 	/**
 	 * Gets a content fragment between specified line numbers
@@ -108,7 +127,7 @@ export interface RemoveLineNumberOptions {
 	/**
 	 * Original line number format used (if known)
 	 * Helps create more accurate removal pattern
-	 * @default '[{lineNumber}]'
+	 * @default '[{lineNumber}]  '
 	 */
 	format?: string;
 
@@ -119,14 +138,6 @@ export interface RemoveLineNumberOptions {
 	preserveIndentation?: boolean;
 }
 export interface LineNumberOptions {
-	/**
-	 * Format string for line numbers
-	 * Available tokens:
-	 * - {lineNumber}: The line number
-	 * - {lineContent}: The original line content
-	 * @default '[{lineNumber}]'
-	 */
-	format?: string;
 
 	/**
 	 * Starting line number

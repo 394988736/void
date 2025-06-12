@@ -296,25 +296,89 @@ export const builtinTools: {
 	},
 	replace_file_blocks: {
 		name: 'replace_file_blocks',
-		description: `通过行号范围编辑文件内容。(注意：行号是从1开始的，不是从0开始的,原空格也要被保留，否则diff不一致)
+		description: `通过行号范围编辑文件内容
+		应用场景(不限于):
+		- 当你想在文件中替换代码片段时，使用此工具。
+		- 当你想在文件中替换函数或类定义时，使用此工具。
+		- 当你想在文件中替换注释或文档字符串时，使用此工具。
+		- 当你想在文件中替换import语句时，使用此工具。
+		- 当你想在文件中替换export语句时，使用此工具。
+		- 当你想在文件中替换console.log语句时，使用此工具。
+		- 当你想在文件中替换debugger语句时，使用此工具。
+		- 当你想在文件中替换TODO注释时，使用此工具。
+		- 当你想在文件中替换FIXME注释时，使用此工具。
+		- 当你想在文件中替换有bug的代码片段时，使用此工具。
+		- 当你想在文件中替换待优化的代码片段时，使用此工具。
+		- 当你想在文件中删除某些行代码时，使用此工具，只要设置newContent为空字符串即可。
+		注意：
+		- applied success之后用户会返回最新的file content，下次修改需要在这个最新文件的基础上操作
+		-行号是从1开始的，不是从0开始的
+		-换行符应该是\n，不是\\n
+		-同时编辑多块时，各个编辑块的[startLine,endLine]区域一定不能有交集
+		-原空格也要被保留，否则diff不一致
+		-执行时要小心不要丢失代码块的{} , ;等等，否则容易出现大面积lint error
+		-执行后每个编辑块的[startLine,endLine]区域行的所有代码都被删除,被这个编辑块的newContent替代
+		-format:<edits><edit><startLine>1</startLine><endLine>3</endLine><newContent>your new code here</newContent></edit></edits>
 		支持：
 		- 单次/多次编辑：提供 edits 数组，包含多个编辑块
 		必须提供：
 		- 文件URI
 		- 每个编辑块的新内容
 		- 每个编辑块的行号范围：startLine, endLine(系统会自动截取文件中此范围的代码块代为ORIGINAL_BLOCK进行REPLACE)
-		- 原文件的总行号：original_line_count`,
+		- 原文件的总行数：original_line_count`,
 		params: {
 			uri: {
 				description: '要编辑的文件 URI'
 			},
-			original_line_count: { description: '原文件的总行号；用来校对版本是否正确,必须提供' },
+			original_line_count: { description: '原文件的总行号；用来校对版本是否正确,必须提供(这个总行数===文件内容的最后一行开头的行号[row_index]，可以直接引用，注意空行/注释也会占用行号，也算)' },
 			edits: { description: '编辑块' }
 		}
 	},
+	insert_file_blocks: {
+		name: 'insert_file_blocks',
+		description: `插入文件内容;应用场景(不限于)
+		- 当只要添加新内容，不需要替换原有内容时使用此工具
+		- 当你想在文件中添加新的代码片段时，使用此工具。
+		- 当你想在文件中添加新的函数或类定义时，使用此工具。
+		- 当你想在文件中添加新的注释或文档字符串时，使用此工具。
+		- 当你想在文件中添加新的import语句时，使用此工具。
+		- 当你想在文件中添加新的export语句时，使用此工具。
+		- 当你想在文件中添加新的console.log语句时，使用此工具。
+		- 当你想在文件中添加新的debugger语句时，使用此工具。
+		- 当你想在文件中添加新的TODO注释时，使用此工具。
+		- 当你想在文件中添加新的FIXME注释时，使用此工具。
+		- applied success之后用户会返回最新的file content，下次修改需要在这个最新文件的基础上操作
+		注意：
+		-行号是从1开始的，不是从0开始的
+		-换行符应该是\n，不是\\n
+		-执行时要小心不要丢失代码块的{} , ;等等，否则容易出现大面积lint error
+		-请确认格式为:<edits><edit><line_index>5</line_index><before_after>after</before_after><new_content>your inserted code here</new_content></edit></edits>
+
+		支持：
+		- 单次/多次插入：提供 edits 数组，包含多个插入块
+		必须提供：
+		- 文件URI
+		- 每个插入块的line_index:(插入的行位置)
+		- 每个插入块的新内容
+		- 每个插入块的插入位置：before_after(before/after)
+		- 原文件的总行数：original_line_count`,
+		params: {
+			uri: {
+				description: '要编辑的文件 URI'
+			},
+			original_line_count: { description: '原文件的总行号；用来校对版本是否正确,必须提供(这个总行数===文件内容的最后一行开头的行号[row_index]，可以直接引用，注意空行/注释也会占用行号，也算)' },
+			edits: { description: '插入块' }
+		},
+	},
 	rewrite_file: {
 		name: 'rewrite_file',
-		description: `编辑文件，删除所有旧内容并用你的新内容替换。如果你想编辑刚创建的文件，请使用此工具。创建完之后不需要重复回复用户创建的文件内容。`,
+		description: `编辑文件，删除所有旧内容并用你的新内容替换，如果原来还有其他内容，你要确定原内容无用才能覆盖，则直接用你的新内容替换。
+		- 当你想编辑文件的全部内容时，使用此工具。
+		- 当你想重写文件的全部内容时，使用此工具。
+		- 当你想一次性重新编辑整个文件代码量不算很大的文件，同时lint error较多时，可以使用此工具。
+		- 当你想创建新文件并写入内容时，使用此工具。
+		- 当你想使用此工具时，如果文件不存在，系统会自动创建，不需要你create file。`,
+
 		params: {
 			...uriParam('file'),
 			new_content: { description: `文件的新内容。必须是字符串。注意不要带有行号，比如[01]` }
@@ -407,7 +471,14 @@ Description: ${t.description}
 Format:
 ${formatted}`;
 			}
-
+			else if (t.name === 'insert_file_blocks') {
+				const formatted = formatInsertFileBlocksTool(t);
+				return `\
+${i + 1}. ${t.name}
+Description: ${t.description}
+Format:
+${formatted}`;
+			}
 			// 默认处理其他工具
 			const params = Object.keys(t.params)
 				.map(paramName => `<${paramName}>${t.params[paramName].description}</${paramName}>`)
@@ -432,14 +503,7 @@ function formatEditFileByLinesTool(tool: InternalToolInfo): string {
 		const paramDef = params[paramName];
 
 		if (paramName === 'edits') {
-			return `  <edits>
-    <!-- 每个 item 表示一处编辑操作 -->
-    <edit>
-      <startLine>开始行号（从1开始计数，可为 null）</startLine>
-      <endLine>结束行号（可为 null）</endLine>
-      <newContent>要插入的新内容（完全替换指定范围）</newContent>
-    </edit>
-  </edits>`;
+			return `format:<edits><edit><startLine>1</startLine><endLine>3</endLine><newContent>your new code here</newContent></edit></edits>`;
 		}
 
 		// 其他参数直接显示描述
@@ -467,8 +531,29 @@ Format:
 	</item>
   </edits>
 </replace_file_blocks>
+/**
+ * 为 replace_file_blocks 工具生成专属的 XML 格式描述
+ */
+function formatInsertFileBlocksTool(tool: InternalToolInfo): string {
+	const { name, params } = tool;
 
-*/
+	const paramLines = Object.keys(params).map(paramName => {
+		const paramDef = params[paramName];
+
+		if (paramName === 'edits') {
+			return `<edits><edit><line_index>5</line_index><before_after>before/after</before_after><new_content>your inserted code here</new_content></edit></edits>`;
+		}
+
+		// 其他参数直接显示描述
+		return `  <${paramName}>${paramDef.description}</${paramName}>`;
+	});
+
+	const paramsXml = paramLines.join('\n');
+
+	return `<${name}>
+${paramsXml}
+</${name}>`;
+}
 export const reParsedToolXMLString = (toolName: ToolName, toolParams: RawToolParamsObj) => {
 	const params = Object.keys(toolParams).map(paramName => `<${paramName}>${toolParams[paramName]}</${paramName}>`).join('\n')
 	return `\
@@ -493,7 +578,7 @@ const systemToolsXMLPrompt = (chatMode: ChatMode, mcpTools: InternalToolInfo[] |
     - 要调用工具，请按照上面指定的XML格式之一编写其名称和参数。
     - 编写工具调用后，您必须停止并等待结果。
     - 除非另有说明，否则所有参数都是必需的。
-    - 您只能输出一个工具调用，且必须在响应的末尾。
+    - 您只能输出一个工具调用，系统机制只会执行首个工具，且必须在响应的末尾。
     - 您的工具调用将立即执行，结果将出现在以下用户消息中。`)
 
 	return `\
@@ -510,7 +595,6 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 		${mode === 'agent' ? `要非常熟练地使用各种functioncall帮助用户开发、运行和修改其代码库，如编辑文件、运行终端命令等，使用工具时要做到举一反三，不能用户叫一下你才动一下，使用一个工具之后还要认真考虑是否还要有关联的问题要处理;'需要我立即执行这些操作吗?'不要问这种问题，而是直接执行；当需要修改，创建文件等情况时，应该直接使用工具，而不是口头创建，不要在对话中回复等待编辑的代码，因为这样会消耗用户tokens，且耗时长；
 			如果不明确，应当检查文件目录结构或者阅读文件内容
 			如果是规划创建多个文件，先忽略Lint errors，等全部创建完成后，再处理Lint errors。
-			编辑文件优先使用replace_file_blocks，不知道row number的情况下，使用edit_file。
 			`
 			: mode === 'gather' ? `搜索、理解和引用用户代码库中的文件。`
 				: mode === 'normal' ? `协助用户完成编程任务。`

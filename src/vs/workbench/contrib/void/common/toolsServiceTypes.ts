@@ -24,6 +24,7 @@ export const approvalTypeOfBuiltinToolName: Partial<{ [T in BuiltinToolName]?: '
 	'rewrite_file': 'edits',
 	'edit_file': 'edits',
 	'replace_file_blocks': 'edits',
+	'insert_file_blocks': 'edits',
 	'run_command': 'terminal',
 	'run_persistent_command': 'terminal',
 	'open_persistent_terminal': 'terminal',
@@ -59,7 +60,14 @@ export type BuiltinToolCallParams = {
 	'replace_file_blocks': {
 		uri: URI;
 		original_line_count: number;
+		edit?: EditByLinesItem;
 		edits: EditByLinesItem[];
+	},
+	'insert_file_blocks': {
+		uri: URI;
+		original_line_count: number;
+		edit?: InsertFileBlocksItem
+		edits: InsertFileBlocksItem[];
 	},
 	'create_file_or_folder': { uri: URI, isFolder: boolean },
 	'delete_file_or_folder': { uri: URI, isRecursive: boolean, isFolder: boolean },
@@ -72,7 +80,7 @@ export type BuiltinToolCallParams = {
 
 // RESULT OF TOOL CALL
 export type BuiltinToolResultType = {
-	'read_file': { fileContents: string, totalFileLen: number, totalNumLines: number, hasNextPage: boolean },
+	'read_file': { fileContents: string, totalFileLen: number, original_line_count: number, hasNextPage: boolean },
 	'ls_dir': { children: ShallowDirectoryItem[] | null, hasNextPage: boolean, hasPrevPage: boolean, itemsRemaining: number },
 	'get_dir_tree': { str: string, },
 	'search_pathnames_only': { uris: URI[], hasNextPage: boolean },
@@ -80,10 +88,11 @@ export type BuiltinToolResultType = {
 	'search_in_file': { lines: number[]; },
 	'read_lint_errors': { lintErrors: LintErrorItem[] | null },
 	// ---
-	'rewrite_file': Promise<{ lintErrors: LintErrorItem[] | null }>,
+	'rewrite_file': Promise<{ lintErrors: LintErrorItem[] | null, file_content_applied: string }>,
 	'edit_file': Promise<{ lintErrors: LintErrorItem[] | null }>,
 	// Add the new line-based edit tool
-	'replace_file_blocks': Promise<{ lintErrors: LintErrorItem[] | null }>,
+	'replace_file_blocks': Promise<{ lintErrors: LintErrorItem[] | null, file_content_applied: string }>,
+	'insert_file_blocks': Promise<{ lintErrors: LintErrorItem[] | null, file_content_applied: string }>,
 	'create_file_or_folder': {},
 	'delete_file_or_folder': {},
 	// ---
@@ -110,3 +119,12 @@ export type EditByLinesItem = {
 	endLine?: number | null;
 	newContent: string;
 };
+export type InsertFileBlocksItem = {
+	line_index: number;
+	before_after: BeforeAfter;
+	new_content: string;
+}
+export enum BeforeAfter {
+	Before = 'before',
+	After = 'after'
+}
