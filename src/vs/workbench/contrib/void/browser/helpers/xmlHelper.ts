@@ -124,5 +124,11 @@ export function unescapeXml(xml: string): string {
 		.replace(/>/g, '>')
 		.replace(/&amp;/g, '&')
 		.replace(/&quot;/g, '"')
-		.replace(/&#x27;/g, "'");
+		.replace(/&apos;/g, "'")
+		.replace(/&lt;/g, '<')
+		.replace(/&gt;/g, '>')
+		.replace(/&#10/g, '\n')
+		.replace(/&#13/g, '\r')
+		.replace(/&#x27;/g, "'")
+		.replace(/&#x9;/g, '\t');
 }

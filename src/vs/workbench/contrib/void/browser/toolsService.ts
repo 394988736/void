@@ -585,28 +585,44 @@ export class ToolsService implements IToolsService {
 
 
 					const originalFragmentWithRowIndex = LineNumberService.getContentFragment(originalContentWithRowIndex, safeStartLine, safeEndLine)
-					// 特殊处理空内容替换 - 需要保留行号结构
-					const normalizedNewContent = newContent === undefined || newContent === null ? '' : newContent
+					const normalizedNewContent = newContent === undefined || newContent === null ? '' : newContent;
+
+					let adjustedNewContent = normalizedNewContent;
+
+					if (adjustedNewContent.endsWith('\n')) {
+						adjustedNewContent = adjustedNewContent.slice(0, -1); // 移除多余的换行符
+					}
+
 
 					// 执行替换
 					beingApplyContentWithRowIndex = beingApplyContentWithRowIndex.replace(
 						originalFragmentWithRowIndex,
-						normalizedNewContent
-					)
-					// 验证替换后的行数是否匹配
-					// const currentLineCount = LineNumberService.getLineCount(beingApplyContentWithRowIndex)
-					// const originalFragmentLineCount = safeEndLine - safeStartLine + 1
-					// const newContentLineCount = normalizedNewContent === '' ? 0 : LineNumberService.getLineCount(normalizedNewContent)
-					// const expectedLineCount = lineCount - originalFragmentLineCount + newContentLineCount
-					// if (currentLineCount !== expectedLineCount) {
-					// 	throw new Error(
-					// 		`Line count mismatch after applying edit. ` +
-					// 		`Original lines: ${lineCount}, ` +
-					// 		`Replaced ${originalFragmentLineCount} lines ` +
-					// 		`with ${newContentLineCount} lines. ` +
-					// 		`Expected ${expectedLineCount} lines but got ${currentLineCount}.`
-					// 	)
-					// }
+						adjustedNewContent
+					);
+
+					// 更新预期行数（不在此处验证）
+					const originalFragmentLineCount = safeEndLine - safeStartLine + 1;
+					const newContentLineCount = adjustedNewContent === ''
+						? 0
+						: adjustedNewContent.split('\n').length;
+					let expectedTotalLineCount = lineCount; // 跟踪预期总行数
+					expectedTotalLineCount = expectedTotalLineCount - originalFragmentLineCount + newContentLineCount;
+
+
+					// 最终行数验证（所有编辑完成后）
+					const finalContent = LineNumberService.removeFixedLineNumbers(beingApplyContentWithRowIndex);
+					const actualLineCount = finalContent.split('\n').length;
+					if (actualLineCount !== expectedTotalLineCount) {
+						// const errorMessage = `Line count mismatch after applying edits. ` +
+						// 	`Expected: ${expectedTotalLineCount} lines, ` +
+						// 	`Actual: ${actualLineCount} lines. ` +
+						// 	`newContentLineCount: ${newContentLineCount} lines. ` + `originalFragmentLineCount: ${originalFragmentLineCount} lines. ` +
+						// 	`This is usually caused by inconsistent line endings in the replacement content.`
+						// beingApplyContentWithRowIndex += ('\n' + errorMessage)
+						// throw new Error(
+
+						// );
+					}
 				}
 				await voidModelService.initializeModel(uri)
 				if (this.commandBarService.getStreamState(uri) === 'streaming') {
@@ -661,12 +677,17 @@ export class ToolsService implements IToolsService {
 					const originalFragmentWithRowIndex = LineNumberService.getContentFragment(originalContentWithRowIndex, safe_line_index, safe_line_index)
 					const newLine = '\n'
 					let newContentAppendOri = originalContentWithRowIndex
-
+					let extractLine = 0
+					if (originalContentWithRowIndex === '') {
+						newContentAppendOri = new_content
+					}
 					if (before_after == 'before') {
 						newContentAppendOri = new_content + newLine + originalFragmentWithRowIndex
+						extractLine++
 					}
 					else {
 						newContentAppendOri = originalFragmentWithRowIndex + newLine + new_content
+						extractLine++
 					}
 					beingApplyContentWithRowIndex = beingApplyContentWithRowIndex.replace(originalFragmentWithRowIndex, newContentAppendOri)
 					// let expectedAddedLines = LineNumberService.getLineCount(new_content)

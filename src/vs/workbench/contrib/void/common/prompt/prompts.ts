@@ -316,6 +316,7 @@ export const builtinTools: {
 		-换行符应该是\n，不是\\n
 		-同时编辑多块时，各个编辑块的[startLine,endLine]区域一定不能有交集
 		-原空格也要被保留，否则diff不一致
+		-根据实际情况处理好上下文的链接符号，空格缩进对齐从序号[1xx]之后的位置开始算
 		-执行时要小心不要丢失代码块的{} , ;等等，否则容易出现大面积lint error
 		-执行后每个编辑块的[startLine,endLine]区域行的所有代码都被删除,被这个编辑块的newContent替代
 		-format:<edits><edit><startLine>1</startLine><endLine>3</endLine><newContent>your new code here</newContent></edit></edits>
@@ -351,6 +352,7 @@ export const builtinTools: {
 		注意：
 		-行号是从1开始的，不是从0开始的
 		-换行符应该是\n，不是\\n
+		-根据实际情况处理好上下文的链接符号，空格缩进对齐从序号[1xx]之后的位置开始算
 		-执行时要小心不要丢失代码块的{} , ;等等，否则容易出现大面积lint error
 		-请确认格式为:<edits><edit><line_index>5</line_index><before_after>after</before_after><new_content>your inserted code here</new_content></edit></edits>
 
@@ -541,7 +543,7 @@ function formatInsertFileBlocksTool(tool: InternalToolInfo): string {
 		const paramDef = params[paramName];
 
 		if (paramName === 'edits') {
-			return `<edits><edit><line_index>5</line_index><before_after>before/after</before_after><new_content>your inserted code here</new_content></edit></edits>`;
+			return `<edits><edit><line_index>5</line_index><before_after>before[It's sad that adding before the line_index]/after[It's sad that adding after the line_index]</before_after><new_content>your inserted code here</new_content></edit></edits>`;
 		}
 
 		// 其他参数直接显示描述

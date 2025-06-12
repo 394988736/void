@@ -55,7 +55,7 @@ export class LineNumberService {
 					.toString()
 					.padStart(padLength, '0');
 
-				const expectedPrefix = `[${formattedNumber}]  `;
+				const expectedPrefix = `[${formattedNumber}]`;
 
 				// Check if line already starts with the exact same line number prefix
 				if (line.startsWith(expectedPrefix)) {
@@ -73,9 +73,9 @@ export class LineNumberService {
 	 */
 	static removeFixedLineNumbers(content: string): string {
 		if (!content) return content;
-		// return content.replace(/^\[\d+\](\s*)/gm, '$1'); // 保留序号后的空格
-		// 精确匹配行首的 [数字] + 1个空格，其他空格保留
-		return content.replace(/^\[\d+\]  /gm, '');
+		return content.replace(/^\[\d+\](\s*)/gm, '$1'); // 保留序号后的空格
+		// 精确匹配行首的 [数字] + 2个空格，其他空格保留
+		// return content.replace(/^\[\d+\]  /gm, '');
 	}
 	/**
 	 * Gets a content fragment between specified line numbers
