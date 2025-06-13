@@ -310,8 +310,9 @@ export const builtinTools: {
 		- 当你想在文件中替换有bug的代码片段时，使用此工具。
 		- 当你想在文件中替换待优化的代码片段时，使用此工具。
 		- 当你想在文件中删除某些行代码时，使用此工具，只要设置newContent为空字符串即可。
+
 		注意：
-		- applied success之后用户会返回最新的file content，下次修改需要在这个最新文件的基础上操作
+		-applied success之后<replace_file_blocks_result>有最新的file content，下次修改需要在这个文件的基础上操作
 		-行号是从1开始的，不是从0开始的
 		-换行符应该是\n，不是\\n
 		-同时编辑多块时，各个编辑块的[startLine,endLine]区域一定不能有交集
@@ -320,6 +321,8 @@ export const builtinTools: {
 		-执行时要小心不要丢失代码块的{} , ;等等，否则容易出现大面积lint error
 		-执行后每个编辑块的[startLine,endLine]区域行的所有代码都被删除,被这个编辑块的newContent替代
 		-format:<edits><edit><startLine>1</startLine><endLine>3</endLine><newContent>your new code here</newContent></edit></edits>
+		-执行后不用返回全部最新的file content,用户在ide中可以看到最新的文件内容
+
 		支持：
 		- 单次/多次编辑：提供 edits 数组，包含多个编辑块
 		必须提供：
@@ -348,13 +351,15 @@ export const builtinTools: {
 		- 当你想在文件中添加新的debugger语句时，使用此工具。
 		- 当你想在文件中添加新的TODO注释时，使用此工具。
 		- 当你想在文件中添加新的FIXME注释时，使用此工具。
-		- applied success之后用户会返回最新的file content，下次修改需要在这个最新文件的基础上操作
+		- applied success之后<insert_file_blocks_result>有最新的file content，下次修改需要在这个文件的基础上操作
+
 		注意：
 		-行号是从1开始的，不是从0开始的
 		-换行符应该是\n，不是\\n
 		-根据实际情况处理好上下文的链接符号，空格缩进对齐从序号[1xx]之后的位置开始算
 		-执行时要小心不要丢失代码块的{} , ;等等，否则容易出现大面积lint error
 		-请确认格式为:<edits><edit><line_index>5</line_index><before_after>after</before_after><new_content>your inserted code here</new_content></edit></edits>
+		-执行后不用返回全部最新的file content，用户在ide中可以看到最新的文件内容
 
 		支持：
 		- 单次/多次插入：提供 edits 数组，包含多个插入块

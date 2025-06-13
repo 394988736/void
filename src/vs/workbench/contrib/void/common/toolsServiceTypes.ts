@@ -115,8 +115,8 @@ export type BuiltinToolParamName = { [T in BuiltinToolName]: BuiltinToolParamNam
 export type ToolName = BuiltinToolName | (string & {})
 export type ToolParamName<T extends ToolName> = T extends BuiltinToolName ? BuiltinToolParamNameOfTool<T> : string
 export type EditByLinesItem = {
-	startLine?: number | null;
-	endLine?: number | null;
+	startLine: number;
+	endLine: number;
 	newContent: string;
 };
 export type InsertFileBlocksItem = {

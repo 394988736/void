@@ -963,6 +963,15 @@ const EditTool = ({ toolMessage, threadId, messageIdx, content }: Parameters<Res
 			</BottomChildren>
 		}
 	}
+	else {
+		componentParams.children = <ToolChildrenWrapper className='bg-void-bg-3'>
+			<EditToolChildren
+				uri={params.uri}
+				code={content}
+				type={editToolType}
+			/>
+		</ToolChildrenWrapper>
+	}
 
 	return <ToolHeaderWrapper {...componentParams} />
 }
@@ -1523,15 +1532,15 @@ const toolNameToDesc = (toolName: BuiltinToolName, _toolParams: BuiltinToolCallP
 		'replace_file_blocks': () => {
 			const toolParams = _toolParams as BuiltinToolCallParams['replace_file_blocks']
 			return {
-				desc1: getBasename(toolParams.uri.fsPath),
-				desc1Info: getRelative(toolParams.uri, accessor),
+				desc1: getBasename(toolParams.uri.fsPath) || 'replace_file_blocks',
+				desc1Info: getRelative(toolParams.uri, accessor) || 'replace_file_blocks',
 			}
 		},
 		'insert_file_blocks': () => {
 			const toolParams = _toolParams as BuiltinToolCallParams['insert_file_blocks']
 			return {
-				desc1: getBasename(toolParams.uri.fsPath),
-				desc1Info: getRelative(toolParams.uri, accessor),
+				desc1: getBasename(toolParams.uri.fsPath) || 'insert_file_blocks',
+				desc1Info: getRelative(toolParams.uri, accessor) || 'insert_file_blocks',
 			}
 		},
 		'run_command': () => {
@@ -2369,12 +2378,12 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 	},
 	'replace_file_blocks': {
 		resultWrapper: (params) => {
-			return <EditTool {...params} content={params.toolMessage.params.uri.path||params.toolMessage.name} />
+			return <EditTool {...params} content={params.toolMessage.params.edits.join('\n')} />
 		}
 	},
 	'insert_file_blocks': {
 		resultWrapper: (params) => {
-			return <EditTool {...params} content={params.toolMessage.params.uri.path||params.toolMessage.name} />
+			return <EditTool {...params} content={params.toolMessage.params.edits.join('\n')} />
 		}
 	},
 	// ---

@@ -140,7 +140,7 @@ export interface RemoveLineNumberOptions {
 export interface LineNumberOptions {
 
 	/**
-	 * Starting line number
+	 * Starting line number[start at 1]
 	 * @default 1
 	 */
 	startAt?: number;

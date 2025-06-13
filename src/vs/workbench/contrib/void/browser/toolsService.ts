@@ -274,13 +274,11 @@ export class ToolsService implements IToolsService {
 
 				if (rawEdits.length > 0) {
 					for (const edit of rawEdits) {
-						const sl = validateNumber(edit.startLine, { default: null });
-						const el = validateNumber(edit.endLine, { default: null });
 						let nc = validateStr('newContent', edit.newContent || '');
 						nc = unescapeXml(nc)
 						edits.push({
-							startLine: sl !== null && sl >= 1 ? sl : null,
-							endLine: el !== null && el >= 1 ? el : null,
+							startLine: edit.startLine,
+							endLine: edit.endLine,
 							newContent: nc,
 						});
 					}
@@ -503,7 +501,7 @@ export class ToolsService implements IToolsService {
 				editCodeService.instantlyRewriteFile({ uri, newContent })
 				// at end, get lint errors
 				const resultPromise = Promise.resolve().then(async () => {
-
+					await timeout(2000)
 					const { lintErrors } = this._getLintErrors(uri)
 					const result = (await this.callTool['read_file']({ uri, startLine: null, endLine: null, pageNumber: 1 }) as { result: { fileContents: string; totalFileLen: number; original_line_count: number; hasNextPage: boolean; }, interruptTool: () => void }).result
 					return { lintErrors, file_content_applied: result.fileContents, original_line_count: `${result.original_line_count}` }
@@ -589,9 +587,7 @@ export class ToolsService implements IToolsService {
 
 					let adjustedNewContent = normalizedNewContent;
 
-					if (adjustedNewContent.endsWith('\n')) {
-						adjustedNewContent = adjustedNewContent.slice(0, -1); // 移除多余的换行符
-					}
+
 
 
 					// 执行替换
@@ -766,12 +762,15 @@ export class ToolsService implements IToolsService {
 			},
 			search_in_file: (params, result) => {
 				const { model } = voidModelService.getModel(params.uri)
+				const lineCount = model?.getLineCount() || 0
 				if (!model) return '<Error getting string of result>'
 				const lines = result.lines.map(n => {
 					const lineContent = model.getValueInRange({ startLineNumber: n, startColumn: 1, endLineNumber: n, endColumn: Number.MAX_SAFE_INTEGER }, EndOfLinePreference.LF)
-					return `Line ${n}:\n\`\`\`\n${lineContent}\n\`\`\``
+					const lineContentWithRowIndex = LineNumberService.addLineNumbers(lineContent, { startAt: n })
+					return `Line ${n}:\n\`\`\`\n${lineContentWithRowIndex}\n\`\`\``
 				}).join('\n\n');
-				return lines;
+				return `total file original_line_count ${lineCount} lines found:\n${lines}`;
+
 			},
 			read_lint_errors: (params, result) => {
 				return result.lintErrors ?
@@ -801,7 +800,7 @@ export class ToolsService implements IToolsService {
 							: ` No lint errors found.`)
 						: '')
 
-				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\nthis is the file_content applied:\n${result.file_content_applied}`
+				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\n<read_file_result>this is the file_content applied and user have got it too:\n${result.file_content_applied}</read_file_result>`
 			},
 			insert_file_blocks: (params, result) => {
 				const lintErrsString = (
@@ -810,7 +809,7 @@ export class ToolsService implements IToolsService {
 							: ` No lint errors found.`)
 						: '')
 
-				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\nthis is the file_content applied:\n${result.file_content_applied}`
+				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\n<read_file_result>this is the file_content applied and user have got it too:\n${result.file_content_applied}</read_file_result>`
 			},
 			rewrite_file: (params, result) => {
 				const lintErrsString = (
@@ -819,7 +818,7 @@ export class ToolsService implements IToolsService {
 							: ` No lint errors found.`)
 						: '')
 
-				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\nthis is the file_content applied:\n${result.file_content_applied}`
+				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\n<read_file_result>this is the file_content applied:\n${result.file_content_applied}</read_file_result>`
 			},
 			run_command: (params, result) => {
 				const { resolveReason, result: result_, } = result

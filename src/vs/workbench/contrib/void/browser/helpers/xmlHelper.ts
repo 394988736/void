@@ -11,7 +11,9 @@ export function parseRawEdits(xmlString: string): Array<EditByLinesItem> {
 	const edits: Array<EditByLinesItem> = [];
 
 	// 清理输入
-	xmlString = xmlString.trim();
+	xmlString = xmlString.trim()
+		.replace('<newContent>\n', '<newContent>')
+		.replace('\n</newContent>', '</newContent>')
 
 	// 提取所有 <edit>...</edit> 块（支持跨行、非贪婪匹配）
 	const editBlocks = xmlString.match(/<edit\b[^>]*>(?:(?!<\/edit>).|\n)*<\/edit>/gi) || [];
@@ -68,7 +70,9 @@ export function parseRawInsertFileBlocks(xmlString: string): InsertFileBlocksIte
 	const insertions: InsertFileBlocksItem[] = [];
 
 	// 清理输入
-	xmlString = xmlString.trim();
+	xmlString = xmlString.trim()
+		.replace('<new_content>\n', '<new_content>')
+		.replace('\n</new_content>', '</new_content>')
 
 	// 提取所有 <edit>...</edit> 块
 	const editBlocks = xmlString.match(/<edit\b[^>]*>(?:(?!<\/edit>).|\n)*<\/edit>/gi) || [];
