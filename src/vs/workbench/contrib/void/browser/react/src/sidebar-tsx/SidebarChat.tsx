@@ -1413,7 +1413,7 @@ const titleOfBuiltinToolName = {
 	'delete_file_or_folder': { done: `Deleted`, proposed: `Delete`, running: loadingTitleWrapper(`Deleting`) },
 	'edit_file': { done: `Edited file`, proposed: 'Edit file', running: loadingTitleWrapper('Editing file') },
 	'replace_file_blocks': { done: `Edited file`, proposed: 'Edit file', running: loadingTitleWrapper('Editing file') },
-	'insert_file_blocks': { done: `Inserted file blocks`, proposed: 'Insert file blocks', running: loadingTitleWrapper('Inserting file blocks') },
+	'insert_file_blocks': { done: `Inserted code blocks`, proposed: 'Insert code blocks', running: loadingTitleWrapper('Inserting code blocks') },
 
 	'rewrite_file': { done: `Wrote file`, proposed: 'Write file', running: loadingTitleWrapper('Writing file') },
 	'run_command': { done: `Ran terminal`, proposed: 'Run terminal', running: loadingTitleWrapper('Running terminal') },
@@ -2378,12 +2378,13 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 	},
 	'replace_file_blocks': {
 		resultWrapper: (params) => {
-			return <EditTool {...params} content={params.toolMessage.params.edits.join('\n')} />
+
+			return <EditTool {...params} content={params.toolMessage.params.edits.map((item) => `${item.startLine}:${item.endLine} ${item.newContent}`).join('\n----------------------------\n')} />
 		}
 	},
 	'insert_file_blocks': {
 		resultWrapper: (params) => {
-			return <EditTool {...params} content={params.toolMessage.params.edits.join('\n')} />
+			return <EditTool {...params} content={params.toolMessage.params.edits.map((item) => `${item.insert_after_line} ${item.new_content}`).join('\n----------------------------\n')} />
 		}
 	},
 	// ---
@@ -3031,7 +3032,7 @@ export const SidebarChat = () => {
 
 	// the tool currently being generated
 	const generatingTool = toolIsGenerating ?
-		toolCallSoFar.name === 'edit_file' || toolCallSoFar.name === 'rewrite_file' ? <EditToolSoFar
+		toolCallSoFar.name === 'edit_file' || toolCallSoFar.name === 'rewrite_file' || toolCallSoFar.name === 'replace_file_blocks'|| toolCallSoFar.name === 'insert_file_blocks' ? <EditToolSoFar
 			key={'curr-streaming-tool'}
 			toolCallSoFar={toolCallSoFar}
 		/>

@@ -297,7 +297,7 @@ export class ToolsService implements IToolsService {
 				const uri = validateURI(uriStr)
 				const originalContentTotalLineCount = validateNumber(originalContentTotalLineCountUnknown, { default: null }) || 0
 
-				// 支持多个插入块，每个块可以有 line_index
+				// 支持多个插入块，每个块可以有 insert_after_line
 				const edits: Array<InsertFileBlocksItem> = []
 
 
@@ -316,13 +316,12 @@ export class ToolsService implements IToolsService {
 
 				if (rawInsertions.length > 0) {
 					for (const edit of rawInsertions) {
-						const sl = validateNumber(edit.line_index, { default: 0 });
+						const sl = validateNumber(edit.insert_after_line, { default: 0 });
 
 						let nc = validateStr('new_content', edit.new_content);
 						nc = unescapeXml(nc)
 						edits.push({
-							line_index: sl !== null && sl >= 1 ? sl : 1,
-							before_after: edit.before_after,
+							insert_after_line: sl !== null && sl >= 1 ? sl : 1,
 							new_content: nc,
 						});
 					}
@@ -504,7 +503,7 @@ export class ToolsService implements IToolsService {
 					await timeout(2000)
 					const { lintErrors } = this._getLintErrors(uri)
 					const result = (await this.callTool['read_file']({ uri, startLine: null, endLine: null, pageNumber: 1 }) as { result: { fileContents: string; totalFileLen: number; original_line_count: number; hasNextPage: boolean; }, interruptTool: () => void }).result
-					return { lintErrors, file_content_applied: result.fileContents, original_line_count: `${result.original_line_count}` }
+					return { lintErrors, file_content_applied: result.fileContents, original_line_count: result.original_line_count }
 				})
 				return { result: resultPromise }
 			},
@@ -522,10 +521,10 @@ export class ToolsService implements IToolsService {
 				const lintErrorsPromise = Promise.resolve().then(async () => {
 					await timeout(2000)
 					const { lintErrors } = this._getLintErrors(uri)
-					return { lintErrors }
+					return { lintErrors, original_line_count: 0 }
 				})
 
-				return { result: lintErrorsPromise }
+				return { result: lintErrorsPromise, }
 			},
 			replace_file_blocks: async ({ uri, original_line_count, edits }) => {
 				// 初始化模型
@@ -545,8 +544,9 @@ export class ToolsService implements IToolsService {
 				}
 
 				let originalContent = model.getValue(EndOfLinePreference.LF)
-				let originalContentWithRowIndex = LineNumberService.addLineNumbers(originalContent)
-				let beingApplyContentWithRowIndex = originalContentWithRowIndex
+				const originalContentWithRowIndex = LineNumberService.addLineNumbers(originalContent)
+				let beingApplyContentWithRowIndexArr = originalContentWithRowIndex.split('\n')
+
 				// 遍历所有编辑项并应用
 				for (const edit of edits) {
 					const { startLine, endLine, newContent } = edit
@@ -556,7 +556,8 @@ export class ToolsService implements IToolsService {
 					const safeEndLine = typeof endLine === 'number' ? endLine : lineCount
 
 					if (safeStartLine < 1 || safeEndLine > lineCount || safeStartLine > safeEndLine) {
-						throw new Error(`Invalid line range: start_line must be >= 1 and <= end_line <= ${lineCount}`)
+						throw new Error(`Invalid line range: start_line must be >= 1 and <= end_line <= ${lineCount} but your start_line:${safeStartLine},end_line:${safeEndLine}`)
+
 					}
 
 					// 新增：检查 edits 是否存在行号交集
@@ -582,19 +583,31 @@ export class ToolsService implements IToolsService {
 					}
 
 
-					const originalFragmentWithRowIndex = LineNumberService.getContentFragment(originalContentWithRowIndex, safeStartLine, safeEndLine)
+					const originalFragmentWithRowArray = LineNumberService.getContentFragmentArr(originalContentWithRowIndex, safeStartLine, safeEndLine)
 					const normalizedNewContent = newContent === undefined || newContent === null ? '' : newContent;
 
 					let adjustedNewContent = normalizedNewContent;
 
 
 
+					let firstFound = false;
+					let result: string[] = [];
 
-					// 执行替换
-					beingApplyContentWithRowIndex = beingApplyContentWithRowIndex.replace(
-						originalFragmentWithRowIndex,
-						adjustedNewContent
-					);
+					beingApplyContentWithRowIndexArr.forEach(line => {
+						if (originalFragmentWithRowArray.includes(line)) {
+							if (!firstFound && normalizedNewContent != '') {
+								// 第一次匹配：替换
+								result.push(normalizedNewContent);
+								firstFound = true;
+							}
+							// 第二次及以后匹配：不 push，即不返回
+						} else {
+							// 非匹配项：保留
+							result.push(line);
+						}
+					});
+
+					beingApplyContentWithRowIndexArr = result;
 
 					// 更新预期行数（不在此处验证）
 					const originalFragmentLineCount = safeEndLine - safeStartLine + 1;
@@ -606,26 +619,26 @@ export class ToolsService implements IToolsService {
 
 
 					// 最终行数验证（所有编辑完成后）
-					const finalContent = LineNumberService.removeFixedLineNumbers(beingApplyContentWithRowIndex);
-					const actualLineCount = finalContent.split('\n').length;
-					if (actualLineCount !== expectedTotalLineCount) {
-						// const errorMessage = `Line count mismatch after applying edits. ` +
-						// 	`Expected: ${expectedTotalLineCount} lines, ` +
-						// 	`Actual: ${actualLineCount} lines. ` +
-						// 	`newContentLineCount: ${newContentLineCount} lines. ` + `originalFragmentLineCount: ${originalFragmentLineCount} lines. ` +
-						// 	`This is usually caused by inconsistent line endings in the replacement content.`
-						// beingApplyContentWithRowIndex += ('\n' + errorMessage)
-						// throw new Error(
+					// const finalContent = LineNumberService.removeFixedLineNumbers(beingApplyContentWithRowIndexArr.join('\n'));
+					// const actualLineCount = finalContent.split('\n').length;
+					// if (actualLineCount !== expectedTotalLineCount) {
+					// 	// const errorMessage = `Line count mismatch after applying edits. ` +
+					// 	// 	`Expected: ${expectedTotalLineCount} lines, ` +
+					// 	// 	`Actual: ${actualLineCount} lines. ` +
+					// 	// 	`newContentLineCount: ${newContentLineCount} lines. ` + `originalFragmentLineCount: ${originalFragmentLineCount} lines. ` +
+					// 	// 	`This is usually caused by inconsistent line endings in the replacement content.`
+					// 	// beingApplyContentWithRowIndex += ('\n' + errorMessage)
+					// 	// throw new Error(
 
-						// );
-					}
+					// 	// );
+					// }
 				}
 				await voidModelService.initializeModel(uri)
 				if (this.commandBarService.getStreamState(uri) === 'streaming') {
 					throw new Error(`Another LLM is currently making changes to this file. Please stop streaming for now and ask the user to resume later.`)
 				}
 				await editCodeService.callBeforeApplyOrEdit(uri)
-				const beingApplyContent = LineNumberService.removeFixedLineNumbers(beingApplyContentWithRowIndex)
+				const beingApplyContent = LineNumberService.removeFixedLineNumbers(beingApplyContentWithRowIndexArr.join('\n'))
 				editCodeService.instantlyRewriteFile({ uri, newContent: beingApplyContent })
 				// 可选：在短延迟后返回 lint 错误
 				const resultPromise = Promise.resolve().then(async () => {
@@ -633,7 +646,7 @@ export class ToolsService implements IToolsService {
 					const result = (await this.callTool['read_file']({ uri, startLine: null, endLine: null, pageNumber: 1 }) as { result: { fileContents: string; totalFileLen: number; original_line_count: number; hasNextPage: boolean; }, interruptTool: () => void }).result
 					await timeout(2000)
 					const { lintErrors } = this._getLintErrors(uri)
-					return { lintErrors, file_content_applied: result.fileContents, original_line_count: `${result.original_line_count}` }
+					return { lintErrors, file_content_applied: result.fileContents, original_line_count: result.original_line_count }
 				})
 				return { result: resultPromise }
 			},
@@ -660,10 +673,10 @@ export class ToolsService implements IToolsService {
 				let beingApplyContentWithRowIndex = originalContentWithRowIndex
 				// 遍历所有编辑项并应用
 				for (const edit of edits) {
-					const { line_index, new_content, before_after } = edit
+					const { insert_after_line, new_content } = edit
 
 					// 确保行号有效
-					const safe_line_index = typeof line_index === 'number' ? line_index : 1
+					const safe_line_index = typeof insert_after_line === 'number' ? insert_after_line : 1
 
 
 					if (safe_line_index < 1 || safe_line_index > lineCount) {
@@ -677,11 +690,12 @@ export class ToolsService implements IToolsService {
 					if (originalContentWithRowIndex === '') {
 						newContentAppendOri = new_content
 					}
-					if (before_after == 'before') {
-						newContentAppendOri = new_content + newLine + originalFragmentWithRowIndex
-						extractLine++
-					}
-					else {
+					// if (before_after == 'before') {
+					// 	newContentAppendOri = new_content + newLine + originalFragmentWithRowIndex
+					// 	extractLine++
+					// }
+					// else
+					{
 						newContentAppendOri = originalFragmentWithRowIndex + newLine + new_content
 						extractLine++
 					}
@@ -708,7 +722,7 @@ export class ToolsService implements IToolsService {
 					const result = (await this.callTool['read_file']({ uri, startLine: null, endLine: null, pageNumber: 1 }) as { result: { fileContents: string; totalFileLen: number; original_line_count: number; hasNextPage: boolean; }, interruptTool: () => void }).result
 					await timeout(2000)
 					const { lintErrors } = this._getLintErrors(uri)
-					return { lintErrors, file_content_applied: result.fileContents, original_line_count: `${result.original_line_count}` }
+					return { lintErrors, file_content_applied: result.fileContents, original_line_count: result.original_line_count }
 				})
 				return { result: resultPromise }
 			},
@@ -800,7 +814,7 @@ export class ToolsService implements IToolsService {
 							: ` No lint errors found.`)
 						: '')
 
-				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\n<read_file_result>this is the file_content applied and user have got it too:\n${result.file_content_applied}</read_file_result>`
+				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\n<read_file_result>this is the file_content applied(original_line_count:${result.original_line_count}):\n${result.file_content_applied}</read_file_result>`
 			},
 			insert_file_blocks: (params, result) => {
 				const lintErrsString = (
@@ -809,7 +823,7 @@ export class ToolsService implements IToolsService {
 							: ` No lint errors found.`)
 						: '')
 
-				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\n<read_file_result>this is the file_content applied and user have got it too:\n${result.file_content_applied}</read_file_result>`
+				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\n<read_file_result>this is the file_content applied(original_line_count:${result.original_line_count}):\n${result.file_content_applied}</read_file_result>`
 			},
 			rewrite_file: (params, result) => {
 				const lintErrsString = (
@@ -818,7 +832,7 @@ export class ToolsService implements IToolsService {
 							: ` No lint errors found.`)
 						: '')
 
-				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\n<read_file_result>this is the file_content applied:\n${result.file_content_applied}</read_file_result>`
+				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\n<read_file_result>this is the file_content applied(original_line_count:${result.original_line_count}):\n${result.file_content_applied}</read_file_result>`
 			},
 			run_command: (params, result) => {
 				const { resolveReason, result: result_, } = result

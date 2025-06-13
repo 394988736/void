@@ -55,7 +55,7 @@ export class LineNumberService {
 					.toString()
 					.padStart(padLength, '0');
 
-				const expectedPrefix = `[${formattedNumber}]`;
+				const expectedPrefix = `[${formattedNumber}]:`;
 
 				// Check if line already starts with the exact same line number prefix
 				if (line.startsWith(expectedPrefix)) {
@@ -72,10 +72,15 @@ export class LineNumberService {
 	 * @returns Clean text without line numbers
 	 */
 	static removeFixedLineNumbers(content: string): string {
+		// return this.removeLineNumberWithDot(content)
 		if (!content) return content;
-		return content.replace(/^\[\d+\](\s*)/gm, '$1'); // 保留序号后的空格
+		return content.replace(/^\[\d+\]:(\s*)/gm, '$1'); // 保留序号后的空格
 		// 精确匹配行首的 [数字] + 2个空格，其他空格保留
 		// return content.replace(/^\[\d+\]  /gm, '');
+	}
+	static removeLineNumberWithDot(content: string): string {
+		if (!content) return content;
+		return content.replace(/^\d+\.\s*/gm, ''); // 移除 "1.  ", "2. " 等
 	}
 	/**
 	 * Gets a content fragment between specified line numbers
@@ -85,13 +90,13 @@ export class LineNumberService {
 	 * @param options Configuration options
 	 * @returns The content fragment between the specified lines
 	 */
-	static getContentFragment(
+	static getContentFragmentArr(
 		content: string,
 		startLine: number,
 		endLine: number,
 		options: GetContentFragmentOptions = {}
-	): string {
-		if (!content) return content;
+	): Array<string> {
+		if (!content) return [''];
 		if (startLine < 1) startLine = 1;
 		if (endLine < startLine) endLine = startLine;
 
@@ -115,10 +120,27 @@ export class LineNumberService {
 			return this.addLineNumbers(numberedContent, {
 				...lineNumberOptions,
 				startAt: startLine
-			});
+			}).split('\n');
 		}
 
-		return resultLines.join('\n');
+		return resultLines;
+	}
+
+	/**
+	 * Gets a content fragment between specified line numbers
+	 * @param content The text content to process
+	 * @param startLine 1-based starting line number (inclusive)
+	 * @param endLine 1-based ending line number (inclusive)
+	 * @param options Configuration options
+	 * @returns The content fragment between the specified lines
+	 */
+	static getContentFragment(
+		content: string,
+		startLine: number,
+		endLine: number,
+		options: GetContentFragmentOptions = {}
+	): string {
+		return this.getContentFragmentArr(content, startLine, endLine, options).join('\n');
 	}
 
 

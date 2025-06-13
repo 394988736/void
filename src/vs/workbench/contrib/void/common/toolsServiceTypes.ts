@@ -88,11 +88,11 @@ export type BuiltinToolResultType = {
 	'search_in_file': { lines: number[]; },
 	'read_lint_errors': { lintErrors: LintErrorItem[] | null },
 	// ---
-	'rewrite_file': Promise<{ lintErrors: LintErrorItem[] | null, file_content_applied: string }>,
-	'edit_file': Promise<{ lintErrors: LintErrorItem[] | null }>,
+	'rewrite_file': Promise<{ lintErrors: LintErrorItem[] | null, file_content_applied: string, original_line_count: number }>,
+	'edit_file': Promise<{ lintErrors: LintErrorItem[] | null, original_line_count: number }>,
 	// Add the new line-based edit tool
-	'replace_file_blocks': Promise<{ lintErrors: LintErrorItem[] | null, file_content_applied: string }>,
-	'insert_file_blocks': Promise<{ lintErrors: LintErrorItem[] | null, file_content_applied: string }>,
+	'replace_file_blocks': Promise<{ lintErrors: LintErrorItem[] | null, file_content_applied: string, original_line_count: number }>,
+	'insert_file_blocks': Promise<{ lintErrors: LintErrorItem[] | null, file_content_applied: string, original_line_count: number }>,
 	'create_file_or_folder': {},
 	'delete_file_or_folder': {},
 	// ---
@@ -120,11 +120,6 @@ export type EditByLinesItem = {
 	newContent: string;
 };
 export type InsertFileBlocksItem = {
-	line_index: number;
-	before_after: BeforeAfter;
+	insert_after_line: number;
 	new_content: string;
-}
-export enum BeforeAfter {
-	Before = 'before',
-	After = 'after'
 }

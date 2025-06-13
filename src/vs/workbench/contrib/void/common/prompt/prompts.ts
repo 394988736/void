@@ -309,19 +309,22 @@ export const builtinTools: {
 		- 当你想在文件中替换FIXME注释时，使用此工具。
 		- 当你想在文件中替换有bug的代码片段时，使用此工具。
 		- 当你想在文件中替换待优化的代码片段时，使用此工具。
-		- 当你想在文件中删除某些行代码时，使用此工具，只要设置newContent为空字符串即可。
+		- 当你想在文件中删除某些行代码时，使用此工具，只要设置 new_content 为空即可。
+		- 永远要注意 new_content 不能与上下文重叠，避免出错
 
 		注意：
 		-applied success之后<replace_file_blocks_result>有最新的file content，下次修改需要在这个文件的基础上操作
 		-行号是从1开始的，不是从0开始的
 		-换行符应该是\n，不是\\n
-		-同时编辑多块时，各个编辑块的[startLine,endLine]区域一定不能有交集
+		-同时编辑多块时，各个编辑块的startLine:endLine区域一定不能有交集
 		-原空格也要被保留，否则diff不一致
 		-根据实际情况处理好上下文的链接符号，空格缩进对齐从序号[1xx]之后的位置开始算
 		-执行时要小心不要丢失代码块的{} , ;等等，否则容易出现大面积lint error
-		-执行后每个编辑块的[startLine,endLine]区域行的所有代码都被删除,被这个编辑块的newContent替代
-		-format:<edits><edit><startLine>1</startLine><endLine>3</endLine><newContent>your new code here</newContent></edit></edits>
-		-执行后不用返回全部最新的file content,用户在ide中可以看到最新的文件内容
+		-执行后每个编辑块的startLine:endLine区域行的所有代码都被删除,被这个编辑块的newContent替代
+		-用户提供的SELECTIONS中的lines(n1:n2)要参考
+		-be careful Error: Edit blocks overlap at edits[3] (lines 22-65) and edits[0] (lines 37-37). Overlapping edits are not allowed.
+		-format:<edits><edit><original_line_range>22:31</original_line_range><new_content>your new code here</new_content></edit></edits>
+		-执行完成后no error时不要回复文件状态,用户在ide中可以看到最新的文件内容
 
 		支持：
 		- 单次/多次编辑：提供 edits 数组，包含多个编辑块
@@ -352,14 +355,16 @@ export const builtinTools: {
 		- 当你想在文件中添加新的TODO注释时，使用此工具。
 		- 当你想在文件中添加新的FIXME注释时，使用此工具。
 		- applied success之后<insert_file_blocks_result>有最新的file content，下次修改需要在这个文件的基础上操作
+		- 用户提供的SELECTIONS中的lines(n1:n2)要参考
 
 		注意：
 		-行号是从1开始的，不是从0开始的
 		-换行符应该是\n，不是\\n
 		-根据实际情况处理好上下文的链接符号，空格缩进对齐从序号[1xx]之后的位置开始算
 		-执行时要小心不要丢失代码块的{} , ;等等，否则容易出现大面积lint error
-		-请确认格式为:<edits><edit><line_index>5</line_index><before_after>after</before_after><new_content>your inserted code here</new_content></edit></edits>
-		-执行后不用返回全部最新的file content，用户在ide中可以看到最新的文件内容
+		-请确认格式为:<edits><edit><insert_after_line>Insert content after this line index</insert_after_line><new_content>your inserted code here</new_content></edit></edits>
+		-执行完成后no error时不要回复文件状态,用户在ide中可以看到最新的文件内容
+		-永远要注意 new_content 不能与上下文重叠，避免出错
 
 		支持：
 		- 单次/多次插入：提供 edits 数组，包含多个插入块
@@ -510,7 +515,31 @@ function formatEditFileByLinesTool(tool: InternalToolInfo): string {
 		const paramDef = params[paramName];
 
 		if (paramName === 'edits') {
-			return `format:<edits><edit><startLine>1</startLine><endLine>3</endLine><newContent>your new code here</newContent></edit></edits>`;
+			return `
+		  <${paramName}>
+			<!--
+			  请在此定义一个或多个要对原文进行的修改。
+			  每个 <edit> 表示一个需要替换的代码段。
+
+			  行号范围格式：
+				- 单行："22:22"
+				- 多行："22:31"（包含起止行）
+
+			  注意：指定范围内的内容将被覆盖，注意标点符号，请谨慎操作。
+			-->
+
+			<edits>
+			  <edit>
+				<original_line_range>22:31</original_line_range>
+				<new_content>
+		  function updatedFunction() {
+			console.log("这是更新后的函数。");
+		  }
+				</new_content>
+			  </edit>
+			</edits>
+		  </${paramName}>
+		  `.trim();
 		}
 
 		// 其他参数直接显示描述
@@ -523,24 +552,7 @@ function formatEditFileByLinesTool(tool: InternalToolInfo): string {
 ${paramsXml}
 </${name}>`;
 }
-/*
-replace_file_blocks
-Description: 通过行号范围编辑文件内容，支持多处修改
-Format:
-<replace_file_blocks>
-  <uri>要编辑的文件 URI</uri>
-  <edits>
-	<!-- 每个 item 表示一处编辑操作 -->
-	<item>
-	  <startLine>开始行号（从1开始计数，可为 null）</startLine>
-	  <endLine>结束行号（可为 null）</endLine>
-	  <newContent>要插入的新内容（完全替换指定范围）</newContent>
-	</item>
-  </edits>
-</replace_file_blocks>
-/**
- * 为 replace_file_blocks 工具生成专属的 XML 格式描述
- */
+
 function formatInsertFileBlocksTool(tool: InternalToolInfo): string {
 	const { name, params } = tool;
 
@@ -548,7 +560,7 @@ function formatInsertFileBlocksTool(tool: InternalToolInfo): string {
 		const paramDef = params[paramName];
 
 		if (paramName === 'edits') {
-			return `<edits><edit><line_index>5</line_index><before_after>before[It's sad that adding before the line_index]/after[It's sad that adding after the line_index]</before_after><new_content>your inserted code here</new_content></edit></edits>`;
+			return `<edits><edit><insert_after_line>5</insert_after_line><before_after>before[It's sad that adding before the insert_after_line]/after[It's sad that adding after the insert_after_line]</before_after><new_content>your inserted code here</new_content></edit></edits>`;
 		}
 
 		// 其他参数直接显示描述
@@ -607,7 +619,8 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 				: mode === 'normal' ? `协助用户完成编程任务。`
 					: ''}
 		您将收到来自用户的指令，还可能会收到用户专门选择用于上下文的文件列表，即\`SELECTIONS\`。
-		请协助用户处理他们的查询。`)
+		请协助用户处理他们的查询，引用用户选择的文件内容回复时不应带有序号[123]`)
+
 
 
 
@@ -642,17 +655,14 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 
 	if (mode === 'agent' || mode === 'gather') {
 		// details.push(`只有在工具能帮助您完成用户目标时才调用工具。如果用户只是打招呼或询问您无需工具就能回答的问题，那么不要使用工具。`)
-		details.push(`如果您认为应该使用工具，无需请求许可。`)
 		details.push('一次只使用一个工具调用。')
 		details.push(`永远不要说类似"我将使用\`tool_name\`"这样的话。相反，请高层次地描述工具将要做什么，比如"我将列出___目录中的所有文件"等。`)
-		details.push(`许多工具只有在用户打开工作区时才能工作。`)
 	}
 	else {
 		details.push(`您可以向用户询问更多上下文，如文件内容或规范。如果出现这种情况，告诉他们通过输入@来引用文件和文件夹。`)
 	}
 
 	if (mode === 'agent') {
-		details.push('聊天过程中发现你经常只对话回复，不干活；当你收到指令时应该直接使用工具，不用再次确认。')
 		details.push('总是使用工具（编辑、终端等）来执行操作和实施更改。例如，如果您想编辑文件，必须使用工具。')
 		details.push('所有工具都是可以多次使用的，要灵活地一步步使用，保证逻辑严谨。')
 		details.push(`您经常需要在进行更改之前收集上下文。`)
@@ -757,7 +767,7 @@ export const messageOfSelection = async (
 
 		const lineNumAdd = s.type === 'CodeSelection' ? lineNumAddition(s.range) : ''
 		const content = valWithRowIndex === null ? 'null' : `${tripleTick[0]}${s.language}\n${valWithRowIndex}\n${tripleTick[1]}`
-		const str = `${s.uri.fsPath}${lineNumAdd}:\n${content}`
+		const str = `${s.uri.fsPath}${lineNumAdd} in file:\n<read_file_result>${content}</read_file_result>`
 		return str
 	}
 	else if (s.type === 'Folder') {
