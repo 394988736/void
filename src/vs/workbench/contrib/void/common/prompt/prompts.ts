@@ -298,32 +298,15 @@ export const builtinTools: {
 		name: 'replace_file_blocks',
 		description: `通过行号范围编辑文件内容
 		应用场景(不限于):
-		- 当你想在文件中替换代码片段时，使用此工具。
-		- 当你想在文件中替换函数或类定义时，使用此工具。
-		- 当你想在文件中替换注释或文档字符串时，使用此工具。
-		- 当你想在文件中替换import语句时，使用此工具。
-		- 当你想在文件中替换export语句时，使用此工具。
-		- 当你想在文件中替换console.log语句时，使用此工具。
-		- 当你想在文件中替换debugger语句时，使用此工具。
-		- 当你想在文件中替换TODO注释时，使用此工具。
-		- 当你想在文件中替换FIXME注释时，使用此工具。
-		- 当你想在文件中替换有bug的代码片段时，使用此工具。
-		- 当你想在文件中替换待优化的代码片段时，使用此工具。
-		- 当你想在文件中删除某些行代码时，使用此工具，只要设置 new_content 为空即可。
+		- 中替换代码片段时
+		- 删除重复行代码，只要设置 new_content 为空即可。
 		- 永远要注意 new_content 不能与上下文重叠，避免出错
 
 		注意：
-		-applied success之后<replace_file_blocks_result>有最新的file content，下次修改需要在这个文件的基础上操作
 		-行号是从1开始的，不是从0开始的
-		-换行符应该是\n，不是\\n
-		-同时编辑多块时，各个编辑块的startLine:endLine区域一定不能有交集
 		-原空格也要被保留，否则diff不一致
-		-根据实际情况处理好上下文的链接符号，空格缩进对齐从序号[1xx]之后的位置开始算
-		-执行时要小心不要丢失代码块的{} , ;等等，否则容易出现大面积lint error
-		-执行后每个编辑块的startLine:endLine区域行的所有代码都被删除,被这个编辑块的newContent替代
-		-用户提供的SELECTIONS中的lines(n1:n2)要参考
+		-startLine:endLine行的代码会被删除,newContent替代
 		-be careful Error: Edit blocks overlap at edits[3] (lines 22-65) and edits[0] (lines 37-37). Overlapping edits are not allowed.
-		-format:<edits><edit><original_line_range>22:31</original_line_range><new_content>your new code here</new_content></edit></edits>
 		-执行完成后no error时不要回复文件状态,用户在ide中可以看到最新的文件内容
 
 		支持：
@@ -331,8 +314,8 @@ export const builtinTools: {
 		必须提供：
 		- 文件URI
 		- 每个编辑块的新内容
-		- 每个编辑块的行号范围：startLine, endLine(系统会自动截取文件中此范围的代码块代为ORIGINAL_BLOCK进行REPLACE)
-		- 原文件的总行数：original_line_count`,
+		- startLine, endLine
+		`,
 		params: {
 			uri: {
 				description: '要编辑的文件 URI'
@@ -343,26 +326,16 @@ export const builtinTools: {
 	},
 	insert_file_blocks: {
 		name: 'insert_file_blocks',
-		description: `插入文件内容;应用场景(不限于)
-		- 当只要添加新内容，不需要替换原有内容时使用此工具
-		- 当你想在文件中添加新的代码片段时，使用此工具。
-		- 当你想在文件中添加新的函数或类定义时，使用此工具。
-		- 当你想在文件中添加新的注释或文档字符串时，使用此工具。
-		- 当你想在文件中添加新的import语句时，使用此工具。
-		- 当你想在文件中添加新的export语句时，使用此工具。
-		- 当你想在文件中添加新的console.log语句时，使用此工具。
-		- 当你想在文件中添加新的debugger语句时，使用此工具。
-		- 当你想在文件中添加新的TODO注释时，使用此工具。
-		- 当你想在文件中添加新的FIXME注释时，使用此工具。
-		- applied success之后<insert_file_blocks_result>有最新的file content，下次修改需要在这个文件的基础上操作
-		- 用户提供的SELECTIONS中的lines(n1:n2)要参考
+		description: `插入文件内容;
+		应用场景(不限于)
+		- 添加新的代码片段
+		- 添加新的函数
+		- 添加新的注释或文档字符串
+		- import
+		- export
 
 		注意：
 		-行号是从1开始的，不是从0开始的
-		-换行符应该是\n，不是\\n
-		-根据实际情况处理好上下文的链接符号，空格缩进对齐从序号[1xx]之后的位置开始算
-		-执行时要小心不要丢失代码块的{} , ;等等，否则容易出现大面积lint error
-		-请确认格式为:<edits><edit><insert_after_line>Insert content after this line index</insert_after_line><new_content>your inserted code here</new_content></edit></edits>
 		-执行完成后no error时不要回复文件状态,用户在ide中可以看到最新的文件内容
 		-永远要注意 new_content 不能与上下文重叠，避免出错
 
@@ -764,10 +737,10 @@ export const messageOfSelection = async (
 	if (s.type === 'File' || s.type === 'CodeSelection') {
 		const { val } = await readFile(opts.fileService, s.uri, DEFAULT_FILE_SIZE_LIMIT)
 		const valWithRowIndex = LineNumberService.addLineNumbers(val || '')
-
+		const lineCount = valWithRowIndex.split('\n').length
 		const lineNumAdd = s.type === 'CodeSelection' ? lineNumAddition(s.range) : ''
 		const content = valWithRowIndex === null ? 'null' : `${tripleTick[0]}${s.language}\n${valWithRowIndex}\n${tripleTick[1]}`
-		const str = `${s.uri.fsPath}${lineNumAdd} in file:\n<read_file_result>${content}</read_file_result>`
+		const str = `${s.uri.fsPath} total ${lineCount} lines ${lineNumAdd} in file:\n<read_file_result>${content}</read_file_result>`
 		return str
 	}
 	else if (s.type === 'Folder') {

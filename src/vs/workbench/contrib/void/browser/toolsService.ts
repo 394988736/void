@@ -535,7 +535,7 @@ export class ToolsService implements IToolsService {
 				}
 				const lineCount = model.getLineCount()
 				if (original_line_count !== lineCount) {
-					throw new Error(`File content has been changed. Please refresh the file and try again.current line count:${lineCount},your file version line count:${original_line_count}`)
+					// throw new Error(`File content has been changed. Please refresh the file and try again.current line count:${lineCount},your file version line count:${original_line_count}`)
 				}
 
 				// 检查是否有其他流式操作正在进行
@@ -660,7 +660,7 @@ export class ToolsService implements IToolsService {
 				}
 				const lineCount = model.getLineCount()
 				if (original_line_count !== lineCount) {
-					throw new Error(`File content has been changed. Please refresh the file and try again.current line count:${lineCount},your file version line count:${original_line_count}`)
+					// throw new Error(`File content has been changed. Please refresh the file and try again.current line count:${lineCount},your file version line count:${original_line_count}`)
 
 				}
 				// 检查是否有其他流式操作正在进行
@@ -759,7 +759,7 @@ export class ToolsService implements IToolsService {
 		// given to the LLM after the call for successful tool calls
 		this.stringOfResult = {
 			read_file: (params, result) => {
-				return `${params.uri.fsPath}\n\`\`\`\n${result.fileContents}\n\`\`\`${nextPageStr(result.hasNextPage)}${result.hasNextPage ? `\nMore info because truncated: this file has ${result.original_line_count} lines, or ${result.totalFileLen} characters.` : ''}`
+				return `total ${result.original_line_count} lines \n${params.uri.fsPath}\n\`\`\`\n${result.fileContents}\n\`\`\`${nextPageStr(result.hasNextPage)}${result.hasNextPage ? `\nMore info because truncated: this file has ${result.original_line_count} lines, or ${result.totalFileLen} characters.` : ''}`
 			},
 			ls_dir: (params, result) => {
 				const dirTreeStr = stringifyDirectoryTree1Deep(params, result)
