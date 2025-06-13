@@ -524,7 +524,7 @@ export class ToolsService implements IToolsService {
 					return { lintErrors, original_line_count: 0 }
 				})
 
-				return { result: lintErrorsPromise, }
+				return { result: lintErrorsPromise }
 			},
 			replace_file_blocks: async ({ uri, original_line_count, edits }) => {
 				// 初始化模型
@@ -557,7 +557,6 @@ export class ToolsService implements IToolsService {
 
 					if (safeStartLine < 1 || safeEndLine > lineCount || safeStartLine > safeEndLine) {
 						throw new Error(`Invalid line range: start_line must be >= 1 and <= end_line <= ${lineCount} but your start_line:${safeStartLine},end_line:${safeEndLine}`)
-
 					}
 
 					// 新增：检查 edits 是否存在行号交集
@@ -759,7 +758,8 @@ export class ToolsService implements IToolsService {
 		// given to the LLM after the call for successful tool calls
 		this.stringOfResult = {
 			read_file: (params, result) => {
-				return `total ${result.original_line_count} lines \n${params.uri.fsPath}\n\`\`\`\n${result.fileContents}\n\`\`\`${nextPageStr(result.hasNextPage)}${result.hasNextPage ? `\nMore info because truncated: this file has ${result.original_line_count} lines, or ${result.totalFileLen} characters.` : ''}`
+				return `<total_line>${result.original_line_count}</total_line> <url>${params.uri.fsPath}</url> \n<file_content>\`\`\`\n${result.fileContents}\n\`\`\`</file_content>${nextPageStr(result.hasNextPage)}${result.hasNextPage ? `\nMore info because truncated: this file has ${result.original_line_count} lines, or ${result.totalFileLen} characters.` : ''}`
+
 			},
 			ls_dir: (params, result) => {
 				const dirTreeStr = stringifyDirectoryTree1Deep(params, result)
@@ -814,7 +814,7 @@ export class ToolsService implements IToolsService {
 							: ` No lint errors found.`)
 						: '')
 
-				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\n<read_file_result>this is the file_content applied(original_line_count:${result.original_line_count}):\n${result.file_content_applied}</read_file_result>`
+				return `Change successfully made to <url>${params.uri.fsPath}</url>.${lintErrsString}\n<total_line>${result.original_line_count}</total_line>:\n<file_content>${result.file_content_applied}</file_content>`
 			},
 			insert_file_blocks: (params, result) => {
 				const lintErrsString = (
@@ -823,7 +823,7 @@ export class ToolsService implements IToolsService {
 							: ` No lint errors found.`)
 						: '')
 
-				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\n<read_file_result>this is the file_content applied(original_line_count:${result.original_line_count}):\n${result.file_content_applied}</read_file_result>`
+				return `Change successfully made to <url>${params.uri.fsPath}</url>.${lintErrsString}\n<total_line>${result.original_line_count}</total_line>:\n<file_content>${result.file_content_applied}</file_content>`
 			},
 			rewrite_file: (params, result) => {
 				const lintErrsString = (
@@ -832,7 +832,7 @@ export class ToolsService implements IToolsService {
 							: ` No lint errors found.`)
 						: '')
 
-				return `Change successfully made to ${params.uri.fsPath}.${lintErrsString}\n<read_file_result>this is the file_content applied(original_line_count:${result.original_line_count}):\n${result.file_content_applied}</read_file_result>`
+				return `Change successfully made to <url>${params.uri.fsPath}</url>.${lintErrsString}\n<total_line>${result.original_line_count}</total_line>:\n<file_content>${result.file_content_applied}</file_content>`
 			},
 			run_command: (params, result) => {
 				const { resolveReason, result: result_, } = result

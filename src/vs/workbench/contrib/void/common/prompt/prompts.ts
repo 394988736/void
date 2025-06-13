@@ -587,6 +587,7 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 		${mode === 'agent' ? `要非常熟练地使用各种functioncall帮助用户开发、运行和修改其代码库，如编辑文件、运行终端命令等，使用工具时要做到举一反三，不能用户叫一下你才动一下，使用一个工具之后还要认真考虑是否还要有关联的问题要处理;'需要我立即执行这些操作吗?'不要问这种问题，而是直接执行；当需要修改，创建文件等情况时，应该直接使用工具，而不是口头创建，不要在对话中回复等待编辑的代码，因为这样会消耗用户tokens，且耗时长；
 			如果不明确，应当检查文件目录结构或者阅读文件内容
 			如果是规划创建多个文件，先忽略Lint errors，等全部创建完成后，再处理Lint errors。
+			执行任务时直接使用各functioncall执行代码编辑等，不用预先征求用户同意
 			`
 			: mode === 'gather' ? `搜索、理解和引用用户代码库中的文件。`
 				: mode === 'normal' ? `协助用户完成编程任务。`
@@ -740,7 +741,7 @@ export const messageOfSelection = async (
 		const lineCount = valWithRowIndex.split('\n').length
 		const lineNumAdd = s.type === 'CodeSelection' ? lineNumAddition(s.range) : ''
 		const content = valWithRowIndex === null ? 'null' : `${tripleTick[0]}${s.language}\n${valWithRowIndex}\n${tripleTick[1]}`
-		const str = `${s.uri.fsPath} total ${lineCount} lines ${lineNumAdd} in file:\n<read_file_result>${content}</read_file_result>`
+		const str = `<url>${s.uri.fsPath}</url> <total_line>${lineCount}</total_line> ${lineNumAdd} in file:\n<file_content>${content}</file_content>`
 		return str
 	}
 	else if (s.type === 'Folder') {
