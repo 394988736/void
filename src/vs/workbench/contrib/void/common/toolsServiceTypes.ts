@@ -25,6 +25,7 @@ export const approvalTypeOfBuiltinToolName: Partial<{ [T in BuiltinToolName]?: '
 	'edit_file': 'edits',
 	'replace_file_blocks': 'edits',
 	'insert_file_blocks': 'edits',
+	'edit_file_lines': 'edits',
 	'run_command': 'terminal',
 	'run_persistent_command': 'terminal',
 	'open_persistent_terminal': 'terminal',
@@ -60,14 +61,18 @@ export type BuiltinToolCallParams = {
 	'replace_file_blocks': {
 		uri: URI;
 		original_line_count: number;
-		edit?: EditByLinesItem;
-		edits: EditByLinesItem[];
+		edit?: EditBlock;
+		edits: EditBlock[];
+	},
+	'edit_file_lines': {
+		uri: URI;
+		operations: UpdateBlock[];
 	},
 	'insert_file_blocks': {
 		uri: URI;
 		original_line_count: number;
-		edit?: InsertFileBlocksItem
-		edits: InsertFileBlocksItem[];
+		edit?: InsertBlock
+		edits: InsertBlock[];
 	},
 	'create_file_or_folder': { uri: URI, isFolder: boolean },
 	'delete_file_or_folder': { uri: URI, isRecursive: boolean, isFolder: boolean },
@@ -92,6 +97,7 @@ export type BuiltinToolResultType = {
 	'edit_file': Promise<{ lintErrors: LintErrorItem[] | null, original_line_count: number }>,
 	// Add the new line-based edit tool
 	'replace_file_blocks': Promise<{ lintErrors: LintErrorItem[] | null, file_content_applied: string, original_line_count: number }>,
+	'edit_file_lines': Promise<{ lintErrors: LintErrorItem[] | null, file_content_applied: string, original_line_count: number }>,
 	'insert_file_blocks': Promise<{ lintErrors: LintErrorItem[] | null, file_content_applied: string, original_line_count: number }>,
 	'create_file_or_folder': {},
 	'delete_file_or_folder': {},
@@ -114,12 +120,19 @@ export type BuiltinToolParamName = { [T in BuiltinToolName]: BuiltinToolParamNam
 
 export type ToolName = BuiltinToolName | (string & {})
 export type ToolParamName<T extends ToolName> = T extends BuiltinToolName ? BuiltinToolParamNameOfTool<T> : string
-export type EditByLinesItem = {
+export type EditBlock = {
 	startLine: number;
 	endLine: number;
 	newContent: string;
 };
-export type InsertFileBlocksItem = {
+export type UpdateBlock = {
+	type: 'delete' | 'insert' | 'replace';  // 新增 replace 类型
+	startLine?: number;      // 仅 delete/replace 需要
+	endLine?: number;        // 仅 delete/replace 需要
+	insert_after_line?: number; // 仅 insert 需要
+	newContent?: string;     // 仅 insert/replace 需要
+}
+export type InsertBlock = {
 	insert_after_line: number;
 	new_content: string;
 }

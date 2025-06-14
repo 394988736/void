@@ -355,6 +355,61 @@ export const builtinTools: {
 			edits: { description: '插入块' }
 		},
 	},
+	edit_file_lines: {
+		name: 'edit_file_lines',
+		description: `对文件进行行级编辑（支持删除/插入/替换操作）；
+		典型应用场景：
+		• 代码片段更新（删除旧代码+插入新代码）
+		• 函数/方法实现替换
+		• 文档注释修改
+		• 多位置协同编辑
+
+		操作规范：
+		1. 行号从1开始计数
+		2. 原子性执行（全部成功或全部回滚）
+		3. 支持混合操作（单次调用可含多个操作）
+		4. 插入的内容绝不能与上下文有交叉重叠情况
+		5. JS TS 代码行尾不要出现;
+		6. type=insert|replace|delete;
+		7. delete不能影响原来代码结构,否则要用replace修改
+		8. 要坚持编辑代码块尽量少的节约资源原则
+
+		格式要求：
+		• 删除操作必须明确行范围
+		• 插入操作必须指定基准行
+		• 不能有<!-- xxx -->
+		• 替换操作=删除+插入组合`,
+
+		params: {
+			uri: {
+				description: '目标文件URI（需URL编码）',
+			},
+			operations: {
+				description: `编辑指令集，支持三种操作类型：
+
+				<operation type="delete">
+					<line_range start="4" end="12"/>
+				</operation>
+
+				► 插入操作：(after="15"表示新片段将插入在第15行之后)
+				<operation type="insert">
+					<position after="15"/>
+					<content><![CDATA[
+					// 新代码内容
+					function newFunc() {
+						return true;
+					}
+					]]></content>
+				</operation>
+
+				► 替换操作（原子性）：
+				<operation type="replace">
+					<line_range start="4" end="12"/>
+					<content>/* 替换后的内容 */</content>
+				</operation>`
+			}
+		},
+	},
 	rewrite_file: {
 		name: 'rewrite_file',
 		description: `编辑文件，删除所有旧内容并用你的新内容替换，如果原来还有其他内容，你要确定原内容无用才能覆盖，则直接用你的新内容替换。
@@ -445,7 +500,7 @@ export const availableTools = (chatMode: ChatMode | null, mcpTools: InternalTool
 
 const toolCallDefinitionsXMLString = (tools: InternalToolInfo[]): string => {
 	return tools
-		.filter(t => t.name !== 'edit_file')
+		.filter(t => t.name !== 'edit_file' && t.name !== 'replace_file_blocks' && t.name !== 'insert_file_blocks')
 		.map((t, i) => {
 			// 特殊处理 replace_file_blocks
 			if (t.name === 'replace_file_blocks') {
@@ -458,6 +513,14 @@ ${formatted}`;
 			}
 			else if (t.name === 'insert_file_blocks') {
 				const formatted = formatInsertFileBlocksTool(t);
+				return `\
+${i + 1}. ${t.name}
+Description: ${t.description}
+Format:
+${formatted}`;
+			}
+			else if (t.name === 'edit_file_lines') {
+				const formatted = format_edit_file_lines_tool(t);
 				return `\
 ${i + 1}. ${t.name}
 Description: ${t.description}
@@ -498,7 +561,7 @@ function formatEditFileByLinesTool(tool: InternalToolInfo): string {
 				- 单行："22:22"
 				- 多行："22:31"（包含起止行）
 
-			  注意：指定范围内的内容将被覆盖，注意标点符号，请谨慎操作。
+			  注意：指定范围内的内容将被覆盖，必须准确填写，注意标点符号，请谨慎操作。
 			-->
 
 			<edits>
@@ -526,6 +589,50 @@ ${paramsXml}
 </${name}>`;
 }
 
+function format_edit_file_lines_tool(tool: InternalToolInfo): string {
+	const { name, params } = tool;
+
+	const paramLines = Object.keys(params).map(paramName => {
+		const paramDef = params[paramName];
+
+		if (paramName === 'operations') {
+			return `
+		  <${paramName}>
+				<operation type="delete">
+					<line_range start="4" end="12"/>
+				</operation>
+
+				► 插入操作：
+				<operation type="insert">
+					<position after="15"/>
+					<content><![CDATA[
+					// 新代码内容
+					function newFunc() {
+						return true;
+					}
+					]]></content>
+				</operation>
+
+				► 替换操作（原子性）：
+				<operation type="replace">
+					<line_range start="4" end="12"/>
+					<content>/* 替换后的内容 */</content>
+				</operation>
+		  </${paramName}>
+		  `.trim();
+		}
+
+		// 其他参数直接显示描述
+		return `  <${paramName}>${paramDef.description}</${paramName}>`;
+	});
+
+	const paramsXml = paramLines.join('\n');
+
+	return `<${name}>
+${paramsXml}
+</${name}>`;
+}
+
 function formatInsertFileBlocksTool(tool: InternalToolInfo): string {
 	const { name, params } = tool;
 
@@ -533,7 +640,7 @@ function formatInsertFileBlocksTool(tool: InternalToolInfo): string {
 		const paramDef = params[paramName];
 
 		if (paramName === 'edits') {
-			return `<edits><edit><insert_after_line>5</insert_after_line><before_after>before[It's sad that adding before the insert_after_line]/after[It's sad that adding after the insert_after_line]</before_after><new_content>your inserted code here</new_content></edit></edits>`;
+			return `<edits><edit><insert_after_line>5</insert_after_line><new_content>your inserted code here</new_content></edit></edits>`;
 		}
 
 		// 其他参数直接显示描述
@@ -583,7 +690,7 @@ const systemToolsXMLPrompt = (chatMode: ChatMode, mcpTools: InternalToolInfo[] |
 
 
 export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, persistentTerminalIDs, directoryStr, chatMode: mode, mcpTools, includeXMLToolDefinitions }: { workspaceFolders: string[], directoryStr: string, openedURIs: string[], activeURI: string | undefined, persistentTerminalIDs: string[], chatMode: ChatMode, mcpTools: InternalToolInfo[] | undefined, includeXMLToolDefinitions: boolean }) => {
-	const header = (`您是一位专业的编程${mode === 'agent' ? 'agent' : '助手'}，您的工作是\
+	const header = (`您是一位专业的[enable thinking]编程${mode === 'agent' ? 'agent' : '助手'}，您的工作是\
 		${mode === 'agent' ? `要非常熟练地使用各种functioncall帮助用户开发、运行和修改其代码库，如编辑文件、运行终端命令等，使用工具时要做到举一反三，不能用户叫一下你才动一下，使用一个工具之后还要认真考虑是否还要有关联的问题要处理;'需要我立即执行这些操作吗?'不要问这种问题，而是直接执行；当需要修改，创建文件等情况时，应该直接使用工具，而不是口头创建，不要在对话中回复等待编辑的代码，因为这样会消耗用户tokens，且耗时长；
 			如果不明确，应当检查文件目录结构或者阅读文件内容
 			如果是规划创建多个文件，先忽略Lint errors，等全部创建完成后，再处理Lint errors。
@@ -642,6 +749,7 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 		details.push(`您经常需要在进行更改之前收集上下文。`)
 		details.push(`在进行更改之前，总是要有最大的确定性。如果您需要有关文件、变量、函数或类型的更多信息，应该检查、搜索或采取所有必要的操作来最大化您对更改正确性的确定性。`)
 		details.push(`当用户没有特别指定时说'这个文件'默认指的是当前active file`)
+		details.push(`不要每次询问用户是否需要应用这些修复/建议。如果用户没有特别指定，那么就默认应用。但是要有简单描述`)
 	}
 
 	if (mode === 'gather') {
@@ -652,6 +760,8 @@ export const chat_systemMessage = ({ workspaceFolders, openedURIs, activeURI, pe
 	details.push(`如果您向用户编写任何代码块（用三重反引号包装），请使用以下格式：
 - 如果可能，包含语言。终端应该使用语言'shell'。
 - 如果已知，代码块的第一行必须是相关文件的完整路径（否则省略）。
+- 引用回复时代码块开头不要有行号[1,2,3...]:
+- 用户描述的语言可能很简洁或不完整，要深入理解用户意图
 - 文件的其余内容应按常规方式继续。`)
 
 	if (mode === 'gather' || mode === 'normal') {
@@ -738,10 +848,21 @@ export const messageOfSelection = async (
 	if (s.type === 'File' || s.type === 'CodeSelection') {
 		const { val } = await readFile(opts.fileService, s.uri, DEFAULT_FILE_SIZE_LIMIT)
 		const valWithRowIndex = LineNumberService.addLineNumbers(val || '')
+		let lineNumAdd = '';
+		let selectionCode = ''
+
 		const lineCount = valWithRowIndex.split('\n').length
-		const lineNumAdd = s.type === 'CodeSelection' ? lineNumAddition(s.range) : ''
+		if (s.type === 'CodeSelection') {
+			lineNumAdd = lineNumAddition(s.range);
+			selectionCode = LineNumberService.getContentFragment(valWithRowIndex, s.range[0], s.range[1]);
+			// ... rest of your code for CodeSelection case
+		}
+		// Now you can safely use selectionCode
+		const formattedSelectionCode = selectionCode
+			? `<selectionCode>\`\`\`${selectionCode}\`\`\`</selectionCode>`
+			: '';
 		const content = valWithRowIndex === null ? 'null' : `${tripleTick[0]}${s.language}\n${valWithRowIndex}\n${tripleTick[1]}`
-		const str = `<url>${s.uri.fsPath}</url> <total_line>${lineCount}</total_line> ${lineNumAdd} in file:\n<file_content>${content}</file_content>`
+		const str = `<url>${s.uri.fsPath}</url> <total_line>${lineCount}</total_line> ${lineNumAdd} ${formattedSelectionCode} in file:\n<file_content>${content}</file_content>`
 		return str
 	}
 	else if (s.type === 'Folder') {

@@ -895,7 +895,7 @@ const ToolHeaderWrapper = ({
 
 
 
-const EditTool = ({ toolMessage, threadId, messageIdx, content }: Parameters<ResultWrapper<'edit_file' | 'rewrite_file' | 'replace_file_blocks' | 'insert_file_blocks'>>[0] & { content: string }) => {
+const EditTool = ({ toolMessage, threadId, messageIdx, content }: Parameters<ResultWrapper<'edit_file' | 'rewrite_file' | 'replace_file_blocks' | 'insert_file_blocks' | 'edit_file_lines'>>[0] & { content: string }) => {
 	const accessor = useAccessor()
 	const isError = false
 	const isRejected = toolMessage.type === 'rejected'
@@ -1413,6 +1413,7 @@ const titleOfBuiltinToolName = {
 	'delete_file_or_folder': { done: `Deleted`, proposed: `Delete`, running: loadingTitleWrapper(`Deleting`) },
 	'edit_file': { done: `Edited file`, proposed: 'Edit file', running: loadingTitleWrapper('Editing file') },
 	'replace_file_blocks': { done: `Edited file`, proposed: 'Edit file', running: loadingTitleWrapper('Editing file') },
+	'edit_file_lines': { done: `Updated file`, proposed: 'Update file', running: loadingTitleWrapper('Updating file') },
 	'insert_file_blocks': { done: `Inserted code blocks`, proposed: 'Insert code blocks', running: loadingTitleWrapper('Inserting code blocks') },
 
 	'rewrite_file': { done: `Wrote file`, proposed: 'Write file', running: loadingTitleWrapper('Writing file') },
@@ -1536,6 +1537,14 @@ const toolNameToDesc = (toolName: BuiltinToolName, _toolParams: BuiltinToolCallP
 				desc1Info: getRelative(toolParams.uri, accessor) || 'replace_file_blocks',
 			}
 		},
+		'edit_file_lines': () => {
+			const toolParams = _toolParams as BuiltinToolCallParams['edit_file_lines']
+			return {
+				desc1: getBasename(toolParams.uri.fsPath) || 'edit_file_lines',
+				desc1Info: getRelative(toolParams.uri, accessor) || 'edit_file_lines',
+			}
+		},
+
 		'insert_file_blocks': () => {
 			const toolParams = _toolParams as BuiltinToolCallParams['insert_file_blocks']
 			return {
@@ -1735,7 +1744,8 @@ const BottomChildren = ({ children, title }: { children: React.ReactNode, title:
 }
 
 
-const EditToolHeaderButtons = ({ applyBoxId, uri, codeStr, toolName, threadId }: { threadId: string, applyBoxId: string, uri: URI, codeStr: string, toolName: 'edit_file' | 'rewrite_file' | 'replace_file_blocks' | 'insert_file_blocks' }) => {
+const EditToolHeaderButtons = ({ applyBoxId, uri, codeStr, toolName, threadId }: { threadId: string, applyBoxId: string, uri: URI, codeStr: string, toolName: 'edit_file' | 'rewrite_file' | 'replace_file_blocks' | 'insert_file_blocks' | 'edit_file_lines' }) => {
+
 
 	const { streamState } = useEditToolStreamState({ applyBoxId, uri })
 	return <div className='flex items-center gap-1'>
@@ -2378,13 +2388,32 @@ const builtinToolNameToComponent: { [T in BuiltinToolName]: { resultWrapper: Res
 	},
 	'replace_file_blocks': {
 		resultWrapper: (params) => {
-
-			return <EditTool {...params} content={params.toolMessage.params.edits.map((item) => `${item.startLine}:${item.endLine} ${item.newContent}`).join('\n----------------------------\n')} />
+			const content=params.toolMessage.params.edits?.map((item) => `${item.startLine}:${item.endLine} ${item.newContent}`).join('\n----------------------------\n')
+			return <EditTool {...params} content={content??params.toolMessage.params.edits} />
+		}
+	},
+	'edit_file_lines': {
+		resultWrapper: (params) => {
+			const { operations } = params.toolMessage.params
+			const result: string[] = []
+			for (const item of operations) {
+				if(item.type==='delete') {
+					result.push(`delete rows: ${item.startLine}:${item.endLine}`)
+				}
+				else if(item.type==='insert') {
+					result.push(`insert at row: ${item.insert_after_line}\n ${item.newContent}`)
+				}
+				else if(item.type==='replace') {
+					result.push(`replace at row: ${item.startLine}:${item.endLine}\n ${item.newContent}`)
+				}
+			}
+			return <EditTool {...params} content={result.join('\n----------------------------\n')} />
 		}
 	},
 	'insert_file_blocks': {
 		resultWrapper: (params) => {
-			return <EditTool {...params} content={params.toolMessage.params.edits.map((item) => `${item.insert_after_line} ${item.new_content}`).join('\n----------------------------\n')} />
+			const content=params.toolMessage.params.edits?.map((item) => `${item.insert_after_line} ${item.new_content}`).join('\n----------------------------\n')
+			return <EditTool {...params} content={content??params.toolMessage.params.edits} />
 		}
 	},
 	// ---
@@ -3032,7 +3061,7 @@ export const SidebarChat = () => {
 
 	// the tool currently being generated
 	const generatingTool = toolIsGenerating ?
-		toolCallSoFar.name === 'edit_file' || toolCallSoFar.name === 'rewrite_file' || toolCallSoFar.name === 'replace_file_blocks'|| toolCallSoFar.name === 'insert_file_blocks' ? <EditToolSoFar
+		toolCallSoFar.name === 'edit_file' || toolCallSoFar.name === 'rewrite_file' || toolCallSoFar.name === 'replace_file_blocks' || toolCallSoFar.name === 'insert_file_blocks' || toolCallSoFar.name === 'edit_file_lines' ? <EditToolSoFar
 			key={'curr-streaming-tool'}
 			toolCallSoFar={toolCallSoFar}
 		/>
